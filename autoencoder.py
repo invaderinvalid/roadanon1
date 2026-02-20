@@ -15,6 +15,7 @@ _AnomalyDetectorTorch.__init__() so that choosing ae_backend="onnx" avoids
 touching torch entirely.
 """
 
+import os
 import numpy as np
 import cv2
 from config import Config
@@ -119,7 +120,19 @@ class _AnomalyDetectorONNX:
             raise ImportError(
                 "onnxruntime not installed. Install with: pip install onnxruntime"
             )
-        onnx_path = cfg.autoencoder_onnx_path
+        # Prefer INT8 quantized model if enabled and available
+        use_int8 = getattr(cfg, 'ae_use_int8', False)
+        int8_path = getattr(cfg, 'autoencoder_int8_path', '')
+        if use_int8 and int8_path and os.path.exists(int8_path):
+            onnx_path = int8_path
+            tag = "AE-ONNX-INT8"
+        else:
+            onnx_path = cfg.autoencoder_onnx_path
+            tag = "AE-ONNX"
+            if use_int8:
+                print(f"[{tag}] WARNING: INT8 model not found at {int8_path}, "
+                      f"falling back to FP32. Run: python tools/quantize_onnx.py")
+
         opts = ort.SessionOptions()
         opts.inter_op_num_threads = 2
         opts.intra_op_num_threads = 2
@@ -127,7 +140,7 @@ class _AnomalyDetectorONNX:
         self.session = ort.InferenceSession(onnx_path, opts,
                                             providers=["CPUExecutionProvider"])
         self.input_name = self.session.get_inputs()[0].name
-        print(f"[AE-ONNX] Loaded {onnx_path}")
+        print(f"[{tag}] Loaded {onnx_path}")
 
     def infer(self, frame: np.ndarray) -> tuple:
         h, w = frame.shape[:2]

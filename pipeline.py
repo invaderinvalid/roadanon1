@@ -18,6 +18,7 @@ import argparse
 import time
 import numpy as np
 from datetime import datetime
+from collections import defaultdict
 from config import Config
 from preprocessing import MultiCamera
 from motion_detect import MotionDetector
@@ -216,9 +217,23 @@ def run(cfg: Config):
     logger = JSONLLogger(log_path)
     vid_writer = VideoWriterWrapper(cfg.output_dir, cfg.proc_width, cfg.proc_height) if cfg.save_video else None
 
+    # Motion gate thresholds
+    motion_min_pct = getattr(cfg, 'motion_min_pct', 0.5)
+    motion_max_pct = getattr(cfg, 'motion_max_pct', 60.0)
+    roi_area = roi_h * cfg.proc_width
+
+    # Per-stage profiling
+    do_profile = getattr(cfg, 'profile', False)
+    stage_times = defaultdict(float)
+    stage_counts = defaultdict(int)
+    ae_skipped = 0
+
     print(f"[Pipeline] Log → {log_path}")
     print(f"[Pipeline] Tracker IoU={cfg.tracker_iou} max_lost={cfg.tracker_max_lost}")
     print(f"[Pipeline] Video: {'ON' if cfg.save_video else 'OFF (--no-video)'}")
+    print(f"[Pipeline] Motion gate: {motion_min_pct}%-{motion_max_pct}% of ROI")
+    if do_profile:
+        print(f"[Pipeline] Profiling: ON")
     print("[Pipeline] Running... Press 'q' to quit.\n")
 
     frame_count = 0
@@ -261,51 +276,82 @@ def run(cfg: Config):
                 roi = frame[roi_y_start:roi_y_end]
 
                 # ── Stage 2: Motion mask on ROI ──
+                _t = time.time() if do_profile else 0
                 mask, motion_regions = motion_dets[idx].detect(roi)
+                if do_profile:
+                    stage_times['motion'] += time.time() - _t
+                    stage_counts['motion'] += 1
 
                 # ── Build detection candidates for tracker ──
                 det_candidates = []
 
                 if motion_regions:
-                    # ── Stage 3: Mask moving objects before AE (in-place, no copy) ──
-                    mask_bool = mask > 0
-                    masked_roi = roi.copy()  # need copy since roi is a view
-                    masked_roi[mask_bool] = 0
+                    # ── Motion gate: skip AE for trivial / excessive motion ──
+                    total_motion = sum(a for _, a in motion_regions)
+                    motion_pct = (total_motion / roi_area) * 100.0
 
-                    # ── Stage 4: AE on masked ROI ──
-                    error_map, mean_error = ae.infer(masked_roi)
-                    error_map[mask_bool] = 0.0
-                    unmasked = ~mask_bool
-                    if unmasked.any():
-                        mean_error = float(error_map[unmasked].mean())
+                    if motion_pct < motion_min_pct or motion_pct > motion_max_pct:
+                        ae_skipped += 1
                     else:
-                        mean_error = 0.0
+                        # ── Stage 3: Mask moving objects before AE ──
+                        _t = time.time() if do_profile else 0
+                        mask_bool = mask > 0
+                        masked_roi = roi.copy()
+                        masked_roi[mask_bool] = 0
+                        if do_profile:
+                            stage_times['mask'] += time.time() - _t
+                            stage_counts['mask'] += 1
 
-                    if mean_error > cfg.ae_threshold:
-                        # ── Stage 5: Crop from ORIGINAL ROI ──
-                        crops = cropper.extract(roi, error_map, cfg.ae_threshold)
+                        # ── Stage 4: AE on masked ROI ──
+                        _t = time.time() if do_profile else 0
+                        error_map, mean_error = ae.infer(masked_roi)
+                        error_map[mask_bool] = 0.0
+                        unmasked = ~mask_bool
+                        if unmasked.any():
+                            mean_error = float(error_map[unmasked].mean())
+                        else:
+                            mean_error = 0.0
+                        if do_profile:
+                            stage_times['ae'] += time.time() - _t
+                            stage_counts['ae'] += 1
 
-                        crop_count = 0
-                        for crop in crops:
-                            if crop_count >= cfg.max_crops:
-                                break
-                            if validator.is_valid(crop["image"]):
-                                det_candidates.append({
-                                    "bbox": crop["bbox"],      # in ROI coords
-                                    "score": crop["score"],
-                                    "image": crop["image"],
-                                })
-                                crop_count += 1
+                        if mean_error > cfg.ae_threshold:
+                            # ── Stage 5: Crop from ORIGINAL ROI ──
+                            _t = time.time() if do_profile else 0
+                            crops = cropper.extract(roi, error_map, cfg.ae_threshold)
+
+                            crop_count = 0
+                            for crop in crops:
+                                if crop_count >= cfg.max_crops:
+                                    break
+                                if validator.is_valid(crop["image"]):
+                                    det_candidates.append({
+                                        "bbox": crop["bbox"],
+                                        "score": crop["score"],
+                                        "image": crop["image"],
+                                    })
+                                    crop_count += 1
+                            if do_profile:
+                                stage_times['crop'] += time.time() - _t
+                                stage_counts['crop'] += 1
 
                 # ── Stage 6: Tracker update ──
+                _t = time.time() if do_profile else 0
                 tracker = trackers[idx]
                 new_tracks, active_tracks, gone_tracks = tracker.update(
                     det_candidates, frame_count)
+                if do_profile:
+                    stage_times['tracker'] += time.time() - _t
+                    stage_counts['tracker'] += 1
 
                 # ── Stage 7: YOLO only on NEW tracks ──
                 for t in new_tracks:
                     if t.image is not None and validator.is_valid(t.image):
+                        _t = time.time() if do_profile else 0
                         dets = yolo.infer(t.image)
+                        if do_profile:
+                            stage_times['yolo'] += time.time() - _t
+                            stage_counts['yolo'] += 1
                         yolo_calls += 1
                         t.yolo_dets = dets
                         if dets:
@@ -325,12 +371,16 @@ def run(cfg: Config):
                 fps = 0.9 * fps + 0.1 * (1.0 / max(elapsed, 0.001))
 
                 if cfg.save_video or cfg.show_preview:
+                    _t = time.time() if do_profile else 0
                     display = draw_results(frame, roi_y_start, active_tracks,
                                            mean_error, fps, motion_regions)
                     if vid_writer:
                         vid_writer.write(idx, display)
                     if cfg.show_preview:
                         cv2.imshow(f"Camera {idx}", display)
+                    if do_profile:
+                        stage_times['draw'] += time.time() - _t
+                        stage_counts['draw'] += 1
 
             if frame_count % 30 == 0:
                 total_tracks = sum(len(tr.tracks) for tr in trackers)
@@ -367,7 +417,16 @@ def run(cfg: Config):
     print(f"  Time:              {elapsed_total:.1f}s")
     print(f"  ROI:               {cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}% "
           f"({roi_h}px)")
+    print(f"  AE skipped (gate): {ae_skipped}")
     print(f"{'='*55}")
+
+    if do_profile and stage_counts:
+        print(f"\n  Per-stage timing (avg ms):")
+        for s in ['motion', 'mask', 'ae', 'crop', 'tracker', 'yolo', 'draw']:
+            if stage_counts.get(s, 0) > 0:
+                avg = stage_times[s] / stage_counts[s] * 1000
+                print(f"    {s:10s}: {avg:7.1f} ms  ({stage_counts[s]} calls)")
+        print()
 
 
 def main():
@@ -400,7 +459,9 @@ def main():
     parser.add_argument("--no-video", action="store_true",
                         help="Skip video encoding (saves CPU on RPi)")
     parser.add_argument("--rpi", action="store_true",
-                        help="RPi 4B preset: 320x240, onnx, ncnn, skip=2, no video")
+                        help="RPi 4B preset: 320x240, onnx INT8, ncnn, skip=3, no video")
+    parser.add_argument("--profile", action="store_true",
+                        help="Print per-stage timing breakdown")
     args = parser.parse_args()
 
     cfg = Config.rpi_preset() if args.rpi else Config()
@@ -436,6 +497,8 @@ def main():
         cfg.tracker_iou = args.tracker_iou
     if args.no_video:
         cfg.save_video = False
+    if args.profile:
+        cfg.profile = True
 
     run(cfg)
 

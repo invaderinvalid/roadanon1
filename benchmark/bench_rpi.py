@@ -1,15 +1,24 @@
 #!/usr/bin/env python3
 """
-RPi 4B Benchmark — tests all videos in test_video/ with different backends/settings.
+RPi 4B Benchmark — mirrors the actual pipeline.py flow exactly.
 
-Logs: FPS, CPU temperature, CPU usage, RAM usage per frame batch.
-Generates separate report files per test configuration.
+Stages (same as pipeline.py):
+  1. Read frame → crop to ROI
+  2. Motion mask on ROI
+  3. Motion gate (skip AE if motion too small/large)
+  4. Mask → AE on masked ROI
+  5. Error map → crop from original ROI
+  6. Tracker update (IoU matching)
+  7. YOLO on NEW tracks only
+  8. Log
+
+Logs: per-stage timing, CPU temp, CPU usage, RAM.
+Supports --rpi preset (same as pipeline.py --rpi).
 
 Usage (on RPi):
-    python benchmark/bench_rpi.py                           # all defaults
-    python benchmark/bench_rpi.py --backends ncnn tflite    # specific backends
-    python benchmark/bench_rpi.py --vulkan                  # NCNN with Vulkan
-    python benchmark/bench_rpi.py --video-dir test_video    # custom video dir
+    python benchmark/bench_rpi.py --rpi --sources test_video/*.mp4
+    python benchmark/bench_rpi.py --rpi --backends ncnn tflite
+    python benchmark/bench_rpi.py --sources test_video/66_10-07-2023.mp4
 """
 
 import os
@@ -19,8 +28,8 @@ import time
 import glob
 import platform
 import argparse
-import subprocess
 from datetime import datetime
+from collections import defaultdict
 
 # Add parent dir so we can import pipeline modules
 sys.path.insert(0, os.path.join(os.path.dirname(__file__), ".."))
@@ -35,13 +44,11 @@ import numpy as np
 
 def get_cpu_temp():
     """Read CPU temperature (RPi thermal zone)."""
-    # RPi: /sys/class/thermal/thermal_zone0/temp
     try:
         with open("/sys/class/thermal/thermal_zone0/temp") as f:
             return round(int(f.read().strip()) / 1000.0, 1)
     except (FileNotFoundError, PermissionError):
-        pass
-    return -1.0  # not available (macOS etc.)
+        return -1.0
 
 
 def get_cpu_usage():
@@ -51,7 +58,6 @@ def get_cpu_usage():
         return psutil.cpu_percent(interval=None)
     except ImportError:
         pass
-    # Fallback: /proc/stat on Linux
     try:
         with open("/proc/stat") as f:
             line = f.readline()
@@ -73,7 +79,6 @@ def get_ram_usage():
                 "percent": mem.percent}
     except ImportError:
         pass
-    # Fallback: /proc/meminfo on Linux
     try:
         info = {}
         with open("/proc/meminfo") as f:
@@ -90,56 +95,72 @@ def get_ram_usage():
 
 
 # ═══════════════════════════════════════════════════════════════
-# Pipeline stage timing
+# Benchmark run — mirrors pipeline.py run() exactly
 # ═══════════════════════════════════════════════════════════════
 
-def run_benchmark(video_path, backend, settings, report_path, use_vulkan=False):
-    """Run pipeline on a single video, logging performance metrics."""
+def run_benchmark(video_path, cfg, report_path):
+    """Run the actual pipeline flow on a single video, logging perf metrics."""
 
-    from config import Config
-    from preprocessing import VideoSource, preprocess
+    from preprocessing import VideoSource
     from motion_detect import MotionDetector
     from autoencoder import AnomalyDetector
     from cropping import Cropper, Validator
+    from tracker import SimpleTracker
 
-    cfg = Config()
-    cfg.classifier_backend = backend
-    cfg.show_preview = False
-    cfg.sources = [video_path]
-
-    # Apply settings overrides
-    for k, v in settings.items():
-        if hasattr(cfg, k):
-            setattr(cfg, k, v)
-
-    # Load modules
-    src = VideoSource(video_path)
-    motion = MotionDetector(cfg)
-    ae = AnomalyDetector(cfg)
-    cropper = Cropper(cfg)
-    validator = Validator(cfg)
-
-    # Classifier
-    yolo = None
-    if backend == "ncnn":
-        os.environ["NCNN_VULKAN"] = "1" if use_vulkan else "0"
+    # Load classifier
+    if cfg.classifier_backend == "ncnn":
         from classifier_ncnn import YOLOClassifierNCNN
         yolo = YOLOClassifierNCNN(cfg)
-    elif backend == "torch":
+    elif cfg.classifier_backend == "torch":
         from classifier_torch import YOLOClassifierTorch
         yolo = YOLOClassifierTorch(cfg)
-    elif backend == "tflite":
+    else:
         from classifier import YOLOClassifier
         yolo = YOLOClassifier(cfg)
 
-    video_name = os.path.basename(video_path)
-    print(f"\n  [{backend}{'_vulkan' if use_vulkan else ''}] {video_name}")
-    print(f"  Resolution: {cfg.proc_width}x{cfg.proc_height} | "
-          f"AE threshold: {cfg.ae_threshold} | Skip: {cfg.skip_frames}")
+    # Open video
+    src = VideoSource(video_path)
 
-    # Per-frame log entries
+    # ROI: vertical slice (same as pipeline.py)
+    roi_y_start = int(cfg.proc_height * cfg.roi_top)
+    roi_y_end = int(cfg.proc_height * cfg.roi_bottom)
+    roi_h = roi_y_end - roi_y_start
+    roi_area = roi_h * cfg.proc_width
+
+    # Motion gate thresholds (same as pipeline.py)
+    motion_min_pct = getattr(cfg, 'motion_min_pct', 0.5)
+    motion_max_pct = getattr(cfg, 'motion_max_pct', 60.0)
+
+    # Modules (same as pipeline.py)
+    motion_det = MotionDetector(cfg)
+    ae = AnomalyDetector(cfg)
+    cropper = Cropper(cfg)
+    validator = Validator(cfg)
+    tracker = SimpleTracker(iou_thresh=cfg.tracker_iou,
+                            max_lost=cfg.tracker_max_lost)
+
+    video_name = os.path.basename(video_path)
+    backend_str = f"{cfg.classifier_backend}"
+    ae_str = f"{cfg.ae_backend}" + ("-int8" if getattr(cfg, 'ae_use_int8', False) else "")
+
+    print(f"\n  [{backend_str} / {ae_str}] {video_name}")
+    print(f"  Resolution: {cfg.proc_width}x{cfg.proc_height} | "
+          f"ROI: {cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}% ({roi_h}px)")
+    print(f"  AE thresh: {cfg.ae_threshold} | YOLO conf: {cfg.yolo_conf} | "
+          f"Skip: {cfg.skip_frames} | Max crops: {cfg.max_crops}")
+
+    # Per-frame entries + stage accumulators
     entries = []
+    stage_times = defaultdict(float)
+    stage_counts = defaultdict(int)
+
     frame_num = 0
+    processed = 0
+    yolo_calls = 0
+    known_total = 0
+    unknown_total = 0
+    ae_skipped = 0
+    skip_n = cfg.skip_frames
     t_start = time.time()
 
     while True:
@@ -147,112 +168,204 @@ def run_benchmark(video_path, backend, settings, report_path, use_vulkan=False):
         if raw is None:
             break
         frame_num += 1
-        frame = preprocess(raw, cfg.proc_width, cfg.proc_height)
 
-        t0 = time.time()
+        # Resize to proc dimensions
+        frame = cv2.resize(raw, (cfg.proc_width, cfg.proc_height))
 
-        # Stage timings
-        t_motion_s = time.time()
-        mask, regions = motion.detect(frame)
-        t_motion = time.time() - t_motion_s
+        # ── Frame skipping (same as pipeline.py) ──
+        if skip_n > 0 and (frame_num % skip_n != 0):
+            roi = frame[roi_y_start:roi_y_end]
+            motion_det.detect(roi)  # keep BG model updated
+            continue
 
-        t_ae = 0.0
-        t_crop = 0.0
-        t_yolo = 0.0
-        num_crops = 0
-        num_dets = 0
+        processed += 1
+        t_frame = time.time()
+
+        entry = {"frame": frame_num}
         mean_error = 0.0
+        motion_regions = []
+        det_candidates = []
 
-        if regions:
-            # Mask frame
-            masked = frame.copy()
-            masked[mask > 0] = 0
+        # ── Stage 1: Crop to ROI ──
+        roi = frame[roi_y_start:roi_y_end]
 
-            t_ae_s = time.time()
-            error_map, mean_error = ae.infer(masked)
-            error_map[mask > 0] = 0.0
-            unmasked = mask == 0
-            if unmasked.any():
-                mean_error = float(error_map[unmasked].mean())
-            t_ae = time.time() - t_ae_s
+        # ── Stage 2: Motion mask on ROI ──
+        t0 = time.time()
+        mask, motion_regions = motion_det.detect(roi)
+        dt = time.time() - t0
+        entry["t_motion_ms"] = round(dt * 1000, 2)
+        stage_times['motion'] += dt
+        stage_counts['motion'] += 1
 
-            if mean_error > cfg.ae_threshold:
-                t_crop_s = time.time()
-                crops = cropper.extract(frame, error_map, cfg.ae_threshold)
-                t_crop = time.time() - t_crop_s
+        entry["t_ae_ms"] = 0.0
+        entry["t_crop_ms"] = 0.0
+        entry["t_yolo_ms"] = 0.0
+        entry["t_tracker_ms"] = 0.0
+        entry["num_crops"] = 0
+        entry["num_dets"] = 0
+        entry["ae_error"] = 0.0
+        entry["ae_skipped"] = False
+        entry["motion_pct"] = 0.0
 
-                t_yolo_s = time.time()
-                yolo_count = 0
-                for crop in crops:
-                    if yolo_count >= cfg.max_crops:
-                        break
-                    if yolo is not None and validator.is_valid(crop["image"]):
-                        dets = yolo.infer(crop["image"])
-                        num_dets += len(dets)
-                        yolo_count += 1
-                num_crops = yolo_count
-                t_yolo = time.time() - t_yolo_s
+        if motion_regions:
+            # ── Motion gate (same as pipeline.py) ──
+            total_motion = sum(a for _, a in motion_regions)
+            motion_pct = (total_motion / roi_area) * 100.0
+            entry["motion_pct"] = round(motion_pct, 2)
 
-        t_total = time.time() - t0
+            if motion_pct < motion_min_pct or motion_pct > motion_max_pct:
+                ae_skipped += 1
+                entry["ae_skipped"] = True
+            else:
+                # ── Stage 3: Mask moving objects ──
+                t0 = time.time()
+                mask_bool = mask > 0
+                masked_roi = roi.copy()
+                masked_roi[mask_bool] = 0
+                dt = time.time() - t0
+                stage_times['mask'] += dt
+                stage_counts['mask'] += 1
 
-        # Sample system stats every 10 frames
-        entry = {
-            "frame": frame_num,
-            "t_total_ms": round(t_total * 1000, 2),
-            "t_motion_ms": round(t_motion * 1000, 2),
-            "t_ae_ms": round(t_ae * 1000, 2),
-            "t_crop_ms": round(t_crop * 1000, 2),
-            "t_yolo_ms": round(t_yolo * 1000, 2),
-            "ae_error": round(mean_error, 4),
-            "num_crops": num_crops,
-            "num_dets": num_dets,
-            "fps_inst": round(1.0 / max(t_total, 0.001), 1),
-        }
+                # ── Stage 4: AE on masked ROI ──
+                t0 = time.time()
+                error_map, mean_error = ae.infer(masked_roi)
+                error_map[mask_bool] = 0.0
+                unmasked = ~mask_bool
+                if unmasked.any():
+                    mean_error = float(error_map[unmasked].mean())
+                else:
+                    mean_error = 0.0
+                dt = time.time() - t0
+                entry["t_ae_ms"] = round(dt * 1000, 2)
+                entry["ae_error"] = round(mean_error, 4)
+                stage_times['ae'] += dt
+                stage_counts['ae'] += 1
 
-        if frame_num % 10 == 0:
+                if mean_error > cfg.ae_threshold:
+                    # ── Stage 5: Crop from ORIGINAL ROI ──
+                    t0 = time.time()
+                    crops = cropper.extract(roi, error_map, cfg.ae_threshold)
+                    crop_count = 0
+                    for crop in crops:
+                        if crop_count >= cfg.max_crops:
+                            break
+                        if validator.is_valid(crop["image"]):
+                            det_candidates.append({
+                                "bbox": crop["bbox"],
+                                "score": crop["score"],
+                                "image": crop["image"],
+                            })
+                            crop_count += 1
+                    dt = time.time() - t0
+                    entry["t_crop_ms"] = round(dt * 1000, 2)
+                    entry["num_crops"] = crop_count
+                    stage_times['crop'] += dt
+                    stage_counts['crop'] += 1
+
+        # ── Stage 6: Tracker update ──
+        t0 = time.time()
+        new_tracks, active_tracks, gone_tracks = tracker.update(
+            det_candidates, frame_num)
+        dt = time.time() - t0
+        entry["t_tracker_ms"] = round(dt * 1000, 2)
+        stage_times['tracker'] += dt
+        stage_counts['tracker'] += 1
+
+        # ── Stage 7: YOLO on NEW tracks only ──
+        t0 = time.time()
+        for t in new_tracks:
+            if t.image is not None and validator.is_valid(t.image):
+                dets = yolo.infer(t.image)
+                yolo_calls += 1
+                t.yolo_dets = dets
+                if dets:
+                    t.label = dets[0]["class_name"]
+                    t.confidence = dets[0]["confidence"]
+
+            t.logged = True
+            if t.label:
+                known_total += 1
+            else:
+                unknown_total += 1
+            entry["num_dets"] += len(t.yolo_dets)
+
+        dt = time.time() - t0
+        if new_tracks:
+            entry["t_yolo_ms"] = round(dt * 1000, 2)
+            stage_times['yolo'] += dt
+            stage_counts['yolo'] += 1
+
+        t_total = time.time() - t_frame
+        entry["t_total_ms"] = round(t_total * 1000, 2)
+        entry["fps_inst"] = round(1.0 / max(t_total, 0.001), 1)
+        entry["active_tracks"] = len(active_tracks)
+
+        # Sample system stats every 10 processed frames
+        if processed % 10 == 0:
             entry["cpu_temp"] = get_cpu_temp()
             entry["cpu_percent"] = get_cpu_usage()
             entry["ram"] = get_ram_usage()
 
         entries.append(entry)
 
-        if frame_num % 50 == 0:
-            fps_avg = frame_num / (time.time() - t_start)
-            print(f"    Frame {frame_num} | FPS: {fps_avg:.1f} | "
-                  f"Temp: {entry.get('cpu_temp', '?')}°C")
+        if processed % 30 == 0:
+            fps_avg = processed / (time.time() - t_start)
+            temp = entry.get('cpu_temp', '?')
+            print(f"    Frame {frame_num} (proc {processed}) | FPS: {fps_avg:.1f} | "
+                  f"Tracks: {len(active_tracks)} | Temp: {temp}°C")
 
     src.release()
     elapsed = time.time() - t_start
 
-    # Summary
-    fps_avg = frame_num / max(elapsed, 0.001)
-    avg_total = np.mean([e["t_total_ms"] for e in entries])
-    avg_motion = np.mean([e["t_motion_ms"] for e in entries])
-    avg_ae = np.mean([e["t_ae_ms"] for e in entries if e["t_ae_ms"] > 0])
-    avg_yolo = np.mean([e["t_yolo_ms"] for e in entries if e["t_yolo_ms"] > 0]) if any(e["t_yolo_ms"] > 0 for e in entries) else 0
+    # ─── Summary ───
+    fps_avg = processed / max(elapsed, 0.001)
+    ae_entries = [e for e in entries if e["t_ae_ms"] > 0]
 
     summary = {
         "video": video_name,
-        "backend": backend,
-        "vulkan": use_vulkan,
+        "yolo_backend": cfg.classifier_backend,
+        "ae_backend": ae_str,
         "resolution": f"{cfg.proc_width}x{cfg.proc_height}",
+        "roi": f"{cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}%",
+        "roi_height": roi_h,
         "ae_threshold": cfg.ae_threshold,
+        "yolo_conf": cfg.yolo_conf,
         "skip_frames": cfg.skip_frames,
         "max_crops": cfg.max_crops,
         "total_frames": frame_num,
+        "processed_frames": processed,
         "elapsed_s": round(elapsed, 2),
         "avg_fps": round(fps_avg, 1),
-        "avg_total_ms": round(avg_total, 2),
-        "avg_motion_ms": round(avg_motion, 2),
-        "avg_ae_ms": round(float(avg_ae), 2) if not np.isnan(avg_ae) else 0,
-        "avg_yolo_ms": round(float(avg_yolo), 2),
+        "avg_total_ms": round(np.mean([e["t_total_ms"] for e in entries]), 2),
+        "avg_motion_ms": round(np.mean([e["t_motion_ms"] for e in entries]), 2),
+        "avg_ae_ms": round(float(np.mean([e["t_ae_ms"] for e in ae_entries])), 2) if ae_entries else 0,
+        "avg_crop_ms": round(float(np.mean([e["t_crop_ms"] for e in entries if e["t_crop_ms"] > 0])), 2) if any(e["t_crop_ms"] > 0 for e in entries) else 0,
+        "avg_yolo_ms": round(float(np.mean([e["t_yolo_ms"] for e in entries if e["t_yolo_ms"] > 0])), 2) if any(e["t_yolo_ms"] > 0 for e in entries) else 0,
+        "avg_tracker_ms": round(np.mean([e["t_tracker_ms"] for e in entries]), 2),
+        "yolo_calls": yolo_calls,
+        "known_anomalies": known_total,
+        "unknown_anomalies": unknown_total,
+        "ae_skipped_gate": ae_skipped,
         "platform": platform.machine(),
         "python": platform.python_version(),
     }
 
-    print(f"  ✓ {frame_num} frames | {fps_avg:.1f} FPS | {elapsed:.1f}s")
-    print(f"    Avg: total={avg_total:.1f}ms motion={avg_motion:.1f}ms "
-          f"ae={float(avg_ae):.1f}ms yolo={float(avg_yolo):.1f}ms")
+    print(f"  ✓ {frame_num} frames ({processed} processed) | "
+          f"{fps_avg:.1f} FPS | {elapsed:.1f}s")
+    print(f"    Avg: total={summary['avg_total_ms']:.1f}ms "
+          f"motion={summary['avg_motion_ms']:.1f}ms "
+          f"ae={summary['avg_ae_ms']:.1f}ms "
+          f"yolo={summary['avg_yolo_ms']:.1f}ms "
+          f"tracker={summary['avg_tracker_ms']:.1f}ms")
+    print(f"    YOLO calls: {yolo_calls} | Known: {known_total} | "
+          f"Unknown: {unknown_total} | AE skipped: {ae_skipped}")
+
+    # Per-stage breakdown
+    print(f"    Per-stage avg (ms):")
+    for s in ['motion', 'mask', 'ae', 'crop', 'tracker', 'yolo']:
+        if stage_counts.get(s, 0) > 0:
+            avg = stage_times[s] / stage_counts[s] * 1000
+            print(f"      {s:10s}: {avg:7.1f} ms  ({stage_counts[s]} calls)")
 
     # Write report
     report = {"summary": summary, "frames": entries}
@@ -269,86 +382,138 @@ def run_benchmark(video_path, backend, settings, report_path, use_vulkan=False):
 
 def main():
     parser = argparse.ArgumentParser(description="RPi 4B Pipeline Benchmark")
+    parser.add_argument("--sources", nargs="+", default=None,
+                        help="Video files to benchmark (default: test_video/*.mp4)")
     parser.add_argument("--video-dir", default="test_video",
-                        help="Directory containing test videos")
-    parser.add_argument("--backends", nargs="+", default=["torch"],
+                        help="Directory containing test videos (used if --sources omitted)")
+    parser.add_argument("--backends", nargs="+", default=["ncnn"],
                         choices=["ncnn", "torch", "tflite"],
-                        help="Classifier backends to test")
-    parser.add_argument("--vulkan", action="store_true",
-                        help="Also test NCNN with Vulkan acceleration")
-    parser.add_argument("--ae-threshold", type=float, default=0.07)
-    parser.add_argument("--ae-backend", choices=["torch", "onnx"], default="onnx",
-                        help="Autoencoder backend (onnx recommended for RPi 4B)")
-    parser.add_argument("--skip-frames", type=int, default=0)
-    parser.add_argument("--max-crops", type=int, default=5)
-    parser.add_argument("--proc-width", type=int, default=640)
-    parser.add_argument("--proc-height", type=int, default=480)
+                        help="YOLO backends to test")
+    parser.add_argument("--ae-backend", choices=["torch", "onnx"], default=None,
+                        help="AE backend override (default from preset)")
+    parser.add_argument("--rpi", action="store_true",
+                        help="Use RPi 4B preset (same as pipeline.py --rpi)")
+    parser.add_argument("--ae-threshold", type=float, default=None)
+    parser.add_argument("--yolo-conf", type=float, default=None)
+    parser.add_argument("--skip-frames", type=int, default=None)
+    parser.add_argument("--max-crops", type=int, default=None)
+    parser.add_argument("--proc-width", type=int, default=None)
+    parser.add_argument("--proc-height", type=int, default=None)
+    parser.add_argument("--roi-top", type=float, default=None)
     parser.add_argument("--output-dir", default="benchmark/reports",
-                        help="Where to write report logs")
+                        help="Where to write report JSON files")
     args = parser.parse_args()
 
-    # Find test videos
-    videos = sorted(glob.glob(os.path.join(args.video_dir, "*.mp4")))
+    from config import Config
+
+    # Build base config (same logic as pipeline.py)
+    base_cfg = Config.rpi_preset() if args.rpi else Config()
+    base_cfg.show_preview = False
+    base_cfg.save_video = False
+
+    # CLI overrides
+    if args.ae_backend is not None:
+        base_cfg.ae_backend = args.ae_backend
+    if args.ae_threshold is not None:
+        base_cfg.ae_threshold = args.ae_threshold
+    if args.yolo_conf is not None:
+        base_cfg.yolo_conf = args.yolo_conf
+    if args.skip_frames is not None:
+        base_cfg.skip_frames = args.skip_frames
+    if args.max_crops is not None:
+        base_cfg.max_crops = args.max_crops
+    if args.proc_width is not None:
+        base_cfg.proc_width = args.proc_width
+    if args.proc_height is not None:
+        base_cfg.proc_height = args.proc_height
+    if args.roi_top is not None:
+        base_cfg.roi_top = args.roi_top
+
+    # Find videos
+    if args.sources:
+        videos = []
+        for s in args.sources:
+            videos.extend(glob.glob(s))
+        videos = sorted(set(videos))
+    else:
+        videos = sorted(glob.glob(os.path.join(args.video_dir, "*.mp4")))
+
     if not videos:
-        print(f"No .mp4 files found in {args.video_dir}/")
+        print(f"No .mp4 files found")
         sys.exit(1)
 
     os.makedirs(args.output_dir, exist_ok=True)
     timestamp = datetime.now().strftime("%Y%m%d_%H%M%S")
 
-    settings = {
-        "ae_threshold": args.ae_threshold,
-        "ae_backend": args.ae_backend,
-        "skip_frames": args.skip_frames,
-        "max_crops": args.max_crops,
-        "proc_width": args.proc_width,
-        "proc_height": args.proc_height,
-    }
+    ae_str = f"{base_cfg.ae_backend}" + ("-int8" if getattr(base_cfg, 'ae_use_int8', False) else "")
 
     print("╔══════════════════════════════════════╗")
     print("║   RPi 4B Pipeline Benchmark          ║")
     print("╚══════════════════════════════════════╝")
-    print(f"  Videos: {len(videos)} | Backends: {args.backends} | AE: {args.ae_backend}")
-    print(f"  Vulkan: {args.vulkan} | Resolution: {args.proc_width}x{args.proc_height}")
-    print(f"  Platform: {platform.machine()} / {platform.system()}")
+    print(f"  Videos:     {len(videos)}")
+    print(f"  YOLO:       {args.backends}")
+    print(f"  AE:         {ae_str}")
+    print(f"  Resolution: {base_cfg.proc_width}x{base_cfg.proc_height}")
+    print(f"  ROI:        {base_cfg.roi_top*100:.0f}%-{base_cfg.roi_bottom*100:.0f}%")
+    print(f"  Skip:       {base_cfg.skip_frames} | Max crops: {base_cfg.max_crops}")
+    print(f"  AE thresh:  {base_cfg.ae_threshold} | YOLO conf: {base_cfg.yolo_conf}")
+    print(f"  Platform:   {platform.machine()} / {platform.system()}")
+    if args.rpi:
+        print(f"  Preset:     --rpi")
 
     all_summaries = []
 
     for backend in args.backends:
-        # Standard run
+        # Fresh config per backend (to avoid cross-contamination)
+        cfg = Config.rpi_preset() if args.rpi else Config()
+        cfg.show_preview = False
+        cfg.save_video = False
+        cfg.classifier_backend = backend
+
+        # Apply same CLI overrides
+        if args.ae_backend is not None:
+            cfg.ae_backend = args.ae_backend
+        if args.ae_threshold is not None:
+            cfg.ae_threshold = args.ae_threshold
+        if args.yolo_conf is not None:
+            cfg.yolo_conf = args.yolo_conf
+        if args.skip_frames is not None:
+            cfg.skip_frames = args.skip_frames
+        if args.max_crops is not None:
+            cfg.max_crops = args.max_crops
+        if args.proc_width is not None:
+            cfg.proc_width = args.proc_width
+        if args.proc_height is not None:
+            cfg.proc_height = args.proc_height
+        if args.roi_top is not None:
+            cfg.roi_top = args.roi_top
+
         for video in videos:
             vname = os.path.splitext(os.path.basename(video))[0]
             report_path = os.path.join(
                 args.output_dir, f"{timestamp}_{backend}_{vname}.json")
-            summary = run_benchmark(video, backend, settings, report_path)
+            summary = run_benchmark(video, cfg, report_path)
             all_summaries.append(summary)
 
-        # Vulkan run (NCNN only)
-        if args.vulkan and backend == "ncnn":
-            for video in videos:
-                vname = os.path.splitext(os.path.basename(video))[0]
-                report_path = os.path.join(
-                    args.output_dir, f"{timestamp}_{backend}_vulkan_{vname}.json")
-                summary = run_benchmark(video, backend, settings, report_path,
-                                        use_vulkan=True)
-                all_summaries.append(summary)
-
-    # Write combined summary
+    # Combined summary
     combined_path = os.path.join(args.output_dir, f"{timestamp}_summary.json")
     with open(combined_path, "w") as f:
         json.dump(all_summaries, f, indent=2)
 
-    # Print summary table
-    print(f"\n{'='*70}")
+    # Summary table
+    print(f"\n{'='*80}")
     print(f"  BENCHMARK SUMMARY")
-    print(f"{'='*70}")
-    print(f"  {'Video':<25} {'Backend':<15} {'FPS':>6} {'Avg ms':>8} {'AE ms':>7} {'YOLO ms':>8}")
-    print(f"  {'-'*25} {'-'*15} {'-'*6} {'-'*8} {'-'*7} {'-'*8}")
+    print(f"{'='*80}")
+    print(f"  {'Video':<25} {'YOLO':<8} {'AE':<12} {'FPS':>6} {'Total':>7} "
+          f"{'AE':>6} {'YOLO':>6} {'Trk':>5} {'YOcall':>6}")
+    print(f"  {'-'*25} {'-'*8} {'-'*12} {'-'*6} {'-'*7} "
+          f"{'-'*6} {'-'*6} {'-'*5} {'-'*6}")
     for s in all_summaries:
-        bk = s["backend"] + ("_vulkan" if s.get("vulkan") else "")
-        print(f"  {s['video']:<25} {bk:<15} {s['avg_fps']:>6.1f} "
-              f"{s['avg_total_ms']:>8.1f} {s['avg_ae_ms']:>7.1f} {s['avg_yolo_ms']:>8.1f}")
-    print(f"{'='*70}")
+        print(f"  {s['video']:<25} {s['yolo_backend']:<8} {s['ae_backend']:<12} "
+              f"{s['avg_fps']:>6.1f} {s['avg_total_ms']:>6.1f}ms "
+              f"{s['avg_ae_ms']:>5.1f}ms {s['avg_yolo_ms']:>5.1f}ms "
+              f"{s['avg_tracker_ms']:>4.1f}ms {s['yolo_calls']:>6d}")
+    print(f"{'='*80}")
     print(f"  Combined → {combined_path}")
 
 
