@@ -81,7 +81,7 @@ class Config:
         cfg.ae_backend = "onnx"         # no torch → no SIGILL
         cfg.ae_use_int8 = True           # INT8 quantized (2-4× faster on ARM)
         cfg.ae_threshold = 0.08          # higher = fewer false positives
-        cfg.classifier_backend = "ncnn"  # or "tflite"
+        cfg.classifier_backend = "tflite"  # stable on ARM (ncnn can segfault)
         cfg.yolo_conf = 0.35             # reject low-confidence garbage
         cfg.yolo_input_size = 640        # must match NCNN model export size
         cfg.skip_frames = 4              # process every 4th frame
