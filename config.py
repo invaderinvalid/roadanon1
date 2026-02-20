@@ -53,14 +53,14 @@ class Config:
         cfg = Config()
         cfg.proc_width = 320
         cfg.proc_height = 240
-        cfg.motion_history = 100       # 500 is way too slow on ARM
-        cfg.min_contour_area = 300.0   # smaller resolution → smaller contours
-        cfg.yolo_conf = 0.35
+        cfg.motion_history = 200       # stable BG model without being slow
+        cfg.min_contour_area = 200.0   # catch smaller anomalies at 320px
+        cfg.yolo_conf = 0.25           # don't filter too aggressively
         cfg.yolo_input_size = 640
-        cfg.skip_frames = 4
+        cfg.skip_frames = 2            # process every 2nd frame (not 4th)
         cfg.roi_top = 0.35
         cfg.show_preview = False
         cfg.save_video = False
-        cfg.tracker_iou = 0.2
+        cfg.tracker_iou = 0.25         # stricter matching = fewer merged tracks
         cfg.tracker_max_lost = 15
         return cfg
