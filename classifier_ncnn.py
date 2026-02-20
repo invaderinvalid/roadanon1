@@ -30,6 +30,14 @@ class YOLOClassifier:
         self.num_classes = len(CLASSES)
         self.net = None
 
+        # Async state — must init before any early return
+        self._lock = Lock()
+        self._request_frame = None
+        self._result = None
+        self._busy = False
+        self._thread = None
+        self._stop = False
+
         if ncnn is None:
             print("[YOLO] WARNING: ncnn not installed — pip install ncnn")
             return
@@ -43,14 +51,6 @@ class YOLOClassifier:
         except Exception as e:
             self.net = None
             print(f"[YOLO] WARNING: {e}")
-
-        # Async state
-        self._lock = Lock()
-        self._request_frame = None
-        self._result = None
-        self._busy = False
-        self._thread = None
-        self._stop = False
 
     def _letterbox(self, img, target_size):
         """Resize with padding to preserve aspect ratio."""
