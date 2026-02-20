@@ -13,3 +13,4 @@ env/
 project.md
 .DS_Store
 models/model.pth
+output_onnx

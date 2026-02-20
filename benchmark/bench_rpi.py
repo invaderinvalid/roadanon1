@@ -277,6 +277,8 @@ def main():
     parser.add_argument("--vulkan", action="store_true",
                         help="Also test NCNN with Vulkan acceleration")
     parser.add_argument("--ae-threshold", type=float, default=0.07)
+    parser.add_argument("--ae-backend", choices=["torch", "onnx"], default="onnx",
+                        help="Autoencoder backend (onnx recommended for RPi 4B)")
     parser.add_argument("--skip-frames", type=int, default=0)
     parser.add_argument("--max-crops", type=int, default=5)
     parser.add_argument("--proc-width", type=int, default=640)
@@ -296,6 +298,7 @@ def main():
 
     settings = {
         "ae_threshold": args.ae_threshold,
+        "ae_backend": args.ae_backend,
         "skip_frames": args.skip_frames,
         "max_crops": args.max_crops,
         "proc_width": args.proc_width,
@@ -305,7 +308,7 @@ def main():
     print("╔══════════════════════════════════════╗")
     print("║   RPi 4B Pipeline Benchmark          ║")
     print("╚══════════════════════════════════════╝")
-    print(f"  Videos: {len(videos)} | Backends: {args.backends}")
+    print(f"  Videos: {len(videos)} | Backends: {args.backends} | AE: {args.ae_backend}")
     print(f"  Vulkan: {args.vulkan} | Resolution: {args.proc_width}x{args.proc_height}")
     print(f"  Platform: {platform.machine()} / {platform.system()}")
 

@@ -346,6 +346,8 @@ def main():
     parser.add_argument("--yolo-conf", type=float, default=None)
     parser.add_argument("--backend", choices=["ncnn", "torch", "tflite"], default=None,
                         help="YOLO classifier backend")
+    parser.add_argument("--ae-backend", choices=["torch", "onnx"], default=None,
+                        help="Autoencoder backend (onnx for RPi 4B)")
     parser.add_argument("--output", "-o", default=None, help="Output directory")
     parser.add_argument("--skip-frames", type=int, default=None,
                         help="Process every Nth frame (0=all)")
@@ -368,6 +370,8 @@ def main():
         cfg.yolo_conf = args.yolo_conf
     if args.backend:
         cfg.classifier_backend = args.backend
+    if args.ae_backend:
+        cfg.ae_backend = args.ae_backend
     if args.output:
         cfg.output_dir = args.output
     if args.skip_frames is not None:

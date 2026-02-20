@@ -19,6 +19,8 @@ class Config:
 
     # Autoencoder
     autoencoder_path: str = "models/model.pth"
+    autoencoder_onnx_path: str = "models/model.onnx"
+    ae_backend: str = "torch"  # "torch" (Mac/dev) or "onnx" (RPi deploy)
     ae_threshold: float = 0.05
 
     # Cropping / Validation

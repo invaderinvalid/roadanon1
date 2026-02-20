@@ -1,0 +1,2177 @@
+
+pytorch2.10.0:„í
+‰
+input
+enc1.0.weight
+enc1.0.weight_biasgetitemnode_Conv_332"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jﬁ
+	namespace–: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J†
+pkg.torch.onnx.fx_nodeÖ%_native_batch_norm_legit_no_training : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d, %p_enc1_1_weight, %p_enc1_1_bias, %b_enc1_1_running_mean, %b_enc1_1_running_var, 0.1, 1e-05), kwargs = {})J\
+pkg.torch.onnx.name_scopes>['', 'enc1', 'enc1.1', '_native_batch_norm_legit_no_training']J¥
+pkg.torch.onnx.stack_traceïFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+ı
+getitemrelu	node_relu"ReluJò
+	namespaceä: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.2: torch.nn.modules.activation.ReLU/relu: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']JÑ
+pkg.torch.onnx.fx_nodej%relu : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem,), kwargs = {})J<
+pkg.torch.onnx.name_scopes['', 'enc1', 'enc1.2', 'relu']JÀ
+pkg.torch.onnx.stack_trace¨File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+Ó
+relu
+enc1.3.block.0.weight
+enc1.3.block.0.weight_bias	getitem_3node_Conv_334"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.3: autoencoder.ResBlock/enc1.3.block: torch.nn.modules.container.Sequential/enc1.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_1: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_1 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_1, %p_enc1_3_block_1_weight, %p_enc1_3_block_1_bias, %b_enc1_3_block_1_running_mean, %b_enc1_3_block_1_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc1', 'enc1.3', 'enc1.3.block', 'enc1.3.block.1', '_native_batch_norm_legit_no_training_1']J»
+pkg.torch.onnx.stack_trace©File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+”
+	getitem_3relu_1node_relu_1"ReluJÛ
+	namespaceÂ: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.3: autoencoder.ResBlock/enc1.3.block: torch.nn.modules.container.Sequential/enc1.3.block.2: torch.nn.modules.activation.ReLU/relu_1: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
+pkg.torch.onnx.fx_noden%relu_1 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_3,), kwargs = {})J`
+pkg.torch.onnx.name_scopesB['', 'enc1', 'enc1.3', 'enc1.3.block', 'enc1.3.block.2', 'relu_1']Jﬂ
+pkg.torch.onnx.stack_trace¿File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+
+relu_1
+enc1.3.block.3.weight
+enc1.3.block.3.weight_bias	getitem_6node_Conv_336"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.3: autoencoder.ResBlock/enc1.3.block: torch.nn.modules.container.Sequential/enc1.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_2: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_2 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_2, %p_enc1_3_block_4_weight, %p_enc1_3_block_4_bias, %b_enc1_3_block_4_running_mean, %b_enc1_3_block_4_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc1', 'enc1.3', 'enc1.3.block', 'enc1.3.block.4', '_native_batch_norm_legit_no_training_2']J»
+pkg.torch.onnx.stack_trace©File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ø
+relu
+	getitem_6addnode_add"AddJà
+	namespace{: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.3: autoencoder.ResBlock/add: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jâ
+pkg.torch.onnx.fx_nodeo%add : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu, %getitem_6), kwargs = {})J;
+pkg.torch.onnx.name_scopes['', 'enc1', 'enc1.3', 'add']Jõ
+pkg.torch.onnx.stack_trace¸File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Æ
+addrelu_2node_relu_2"ReluJé
+	namespaceÄ: autoencoder.UNetAutoencoder/enc1: torch.nn.modules.container.Sequential/enc1.3: autoencoder.ResBlock/relu_2: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÇ
+pkg.torch.onnx.fx_nodeh%relu_2 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc1', 'enc1.3', 'relu_2']Jõ
+pkg.torch.onnx.stack_trace¸File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 103, in forward
+    e1 = self.enc1(x)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+
+relu_2
+enc2.0.weight
+enc2.0.weight_bias	getitem_9node_Conv_338"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†J‡
+	namespace“: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_3: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J§
+pkg.torch.onnx.fx_nodeâ%_native_batch_norm_legit_no_training_3 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_3, %p_enc2_1_weight, %p_enc2_1_bias, %b_enc2_1_running_mean, %b_enc2_1_running_var, 0.1, 1e-05), kwargs = {})J^
+pkg.torch.onnx.name_scopes@['', 'enc2', 'enc2.1', '_native_batch_norm_legit_no_training_3']Jµ
+pkg.torch.onnx.stack_traceñFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ñ
+	getitem_9relu_3node_relu_3"ReluJö
+	namespaceå: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.2: torch.nn.modules.activation.ReLU/relu_3: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
+pkg.torch.onnx.fx_noden%relu_3 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_9,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc2', 'enc2.2', 'relu_3']JÃ
+pkg.torch.onnx.stack_trace≠File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+Ú
+relu_3
+enc2.3.block.0.weight
+enc2.3.block.0.weight_bias
+getitem_12node_Conv_340"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.3: autoencoder.ResBlock/enc2.3.block: torch.nn.modules.container.Sequential/enc2.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_4: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_4 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_4, %p_enc2_3_block_1_weight, %p_enc2_3_block_1_bias, %b_enc2_3_block_1_running_mean, %b_enc2_3_block_1_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc2', 'enc2.3', 'enc2.3.block', 'enc2.3.block.1', '_native_batch_norm_legit_no_training_4']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+÷
+
+getitem_12relu_4node_relu_4"ReluJÛ
+	namespaceÂ: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.3: autoencoder.ResBlock/enc2.3.block: torch.nn.modules.container.Sequential/enc2.3.block.2: torch.nn.modules.activation.ReLU/relu_4: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
+pkg.torch.onnx.fx_nodeo%relu_4 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_12,), kwargs = {})J`
+pkg.torch.onnx.name_scopesB['', 'enc2', 'enc2.3', 'enc2.3.block', 'enc2.3.block.2', 'relu_4']J‡
+pkg.torch.onnx.stack_trace¡File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+Ú
+relu_4
+enc2.3.block.3.weight
+enc2.3.block.3.weight_bias
+getitem_15node_Conv_342"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.3: autoencoder.ResBlock/enc2.3.block: torch.nn.modules.container.Sequential/enc2.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_5: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_5 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_5, %p_enc2_3_block_4_weight, %p_enc2_3_block_4_bias, %b_enc2_3_block_4_running_mean, %b_enc2_3_block_4_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc2', 'enc2.3', 'enc2.3.block', 'enc2.3.block.4', '_native_batch_norm_legit_no_training_5']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+¿
+relu_3
+
+getitem_15add_1
+node_add_1"AddJä
+	namespace}: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.3: autoencoder.ResBlock/add_1: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jé
+pkg.torch.onnx.fx_nodet%add_1 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_3, %getitem_15), kwargs = {})J=
+pkg.torch.onnx.name_scopes['', 'enc2', 'enc2.3', 'add_1']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+≥
+add_1relu_5node_relu_5"ReluJé
+	namespaceÄ: autoencoder.UNetAutoencoder/enc2: torch.nn.modules.container.Sequential/enc2.3: autoencoder.ResBlock/relu_5: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÑ
+pkg.torch.onnx.fx_nodej%relu_5 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_1,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc2', 'enc2.3', 'relu_5']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 104, in forward
+    e2 = self.enc2(e1)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Ò
+relu_5
+enc3.0.weight
+enc3.0.weight_bias
+getitem_18node_Conv_344"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†J‡
+	namespace“: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_6: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J§
+pkg.torch.onnx.fx_nodeâ%_native_batch_norm_legit_no_training_6 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_6, %p_enc3_1_weight, %p_enc3_1_bias, %b_enc3_1_running_mean, %b_enc3_1_running_var, 0.1, 1e-05), kwargs = {})J^
+pkg.torch.onnx.name_scopes@['', 'enc3', 'enc3.1', '_native_batch_norm_legit_no_training_6']Jµ
+pkg.torch.onnx.stack_traceñFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ü
+
+getitem_18relu_6node_relu_6"ReluJö
+	namespaceå: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.2: torch.nn.modules.activation.ReLU/relu_6: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
+pkg.torch.onnx.fx_nodeo%relu_6 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_18,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc3', 'enc3.2', 'relu_6']JÃ
+pkg.torch.onnx.stack_trace≠File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+Ú
+relu_6
+enc3.3.block.0.weight
+enc3.3.block.0.weight_bias
+getitem_21node_Conv_346"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.3: autoencoder.ResBlock/enc3.3.block: torch.nn.modules.container.Sequential/enc3.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_7: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_7 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_7, %p_enc3_3_block_1_weight, %p_enc3_3_block_1_bias, %b_enc3_3_block_1_running_mean, %b_enc3_3_block_1_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc3', 'enc3.3', 'enc3.3.block', 'enc3.3.block.1', '_native_batch_norm_legit_no_training_7']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+÷
+
+getitem_21relu_7node_relu_7"ReluJÛ
+	namespaceÂ: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.3: autoencoder.ResBlock/enc3.3.block: torch.nn.modules.container.Sequential/enc3.3.block.2: torch.nn.modules.activation.ReLU/relu_7: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
+pkg.torch.onnx.fx_nodeo%relu_7 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_21,), kwargs = {})J`
+pkg.torch.onnx.name_scopesB['', 'enc3', 'enc3.3', 'enc3.3.block', 'enc3.3.block.2', 'relu_7']J‡
+pkg.torch.onnx.stack_trace¡File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+Ú
+relu_7
+enc3.3.block.3.weight
+enc3.3.block.3.weight_bias
+getitem_24node_Conv_348"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jπ
+	namespace´: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.3: autoencoder.ResBlock/enc3.3.block: torch.nn.modules.container.Sequential/enc3.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_8: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']Jƒ
+pkg.torch.onnx.fx_node©%_native_batch_norm_legit_no_training_8 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_8, %p_enc3_3_block_4_weight, %p_enc3_3_block_4_bias, %b_enc3_3_block_4_running_mean, %b_enc3_3_block_4_running_var, 0.1, 1e-05), kwargs = {})JÄ
+pkg.torch.onnx.name_scopesb['', 'enc3', 'enc3.3', 'enc3.3.block', 'enc3.3.block.4', '_native_batch_norm_legit_no_training_8']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+¿
+relu_6
+
+getitem_24add_2
+node_add_2"AddJä
+	namespace}: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.3: autoencoder.ResBlock/add_2: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jé
+pkg.torch.onnx.fx_nodet%add_2 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_6, %getitem_24), kwargs = {})J=
+pkg.torch.onnx.name_scopes['', 'enc3', 'enc3.3', 'add_2']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+≥
+add_2relu_8node_relu_8"ReluJé
+	namespaceÄ: autoencoder.UNetAutoencoder/enc3: torch.nn.modules.container.Sequential/enc3.3: autoencoder.ResBlock/relu_8: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÑ
+pkg.torch.onnx.fx_nodej%relu_8 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%add_2,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc3', 'enc3.3', 'relu_8']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 105, in forward
+    e3 = self.enc3(e2)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Ò
+relu_8
+enc4.0.weight
+enc4.0.weight_bias
+getitem_27node_Conv_350"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†J‡
+	namespace“: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_9: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J§
+pkg.torch.onnx.fx_nodeâ%_native_batch_norm_legit_no_training_9 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_9, %p_enc4_1_weight, %p_enc4_1_bias, %b_enc4_1_running_mean, %b_enc4_1_running_var, 0.1, 1e-05), kwargs = {})J^
+pkg.torch.onnx.name_scopes@['', 'enc4', 'enc4.1', '_native_batch_norm_legit_no_training_9']Jµ
+pkg.torch.onnx.stack_traceñFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ü
+
+getitem_27relu_9node_relu_9"ReluJö
+	namespaceå: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.2: torch.nn.modules.activation.ReLU/relu_9: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jâ
+pkg.torch.onnx.fx_nodeo%relu_9 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_27,), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'enc4', 'enc4.2', 'relu_9']JÃ
+pkg.torch.onnx.stack_trace≠File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ˆ
+relu_9
+enc4.3.block.0.weight
+enc4.3.block.0.weight_bias
+getitem_30node_Conv_352"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†J∫
+	namespace¨: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.3: autoencoder.ResBlock/enc4.3.block: torch.nn.modules.container.Sequential/enc4.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_10: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∆
+pkg.torch.onnx.fx_node´%_native_batch_norm_legit_no_training_10 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_10, %p_enc4_3_block_1_weight, %p_enc4_3_block_1_bias, %b_enc4_3_block_1_running_mean, %b_enc4_3_block_1_running_var, 0.1, 1e-05), kwargs = {})JÅ
+pkg.torch.onnx.name_scopesc['', 'enc4', 'enc4.3', 'enc4.3.block', 'enc4.3.block.1', '_native_batch_norm_legit_no_training_10']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+€
+
+getitem_30relu_10node_relu_10"ReluJÙ
+	namespaceÊ: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.3: autoencoder.ResBlock/enc4.3.block: torch.nn.modules.container.Sequential/enc4.3.block.2: torch.nn.modules.activation.ReLU/relu_10: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_10 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_30,), kwargs = {})Ja
+pkg.torch.onnx.name_scopesC['', 'enc4', 'enc4.3', 'enc4.3.block', 'enc4.3.block.2', 'relu_10']J‡
+pkg.torch.onnx.stack_trace¡File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+˜
+relu_10
+enc4.3.block.3.weight
+enc4.3.block.3.weight_bias
+getitem_33node_Conv_354"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†J∫
+	namespace¨: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.3: autoencoder.ResBlock/enc4.3.block: torch.nn.modules.container.Sequential/enc4.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_11: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∆
+pkg.torch.onnx.fx_node´%_native_batch_norm_legit_no_training_11 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_11, %p_enc4_3_block_4_weight, %p_enc4_3_block_4_bias, %b_enc4_3_block_4_running_mean, %b_enc4_3_block_4_running_var, 0.1, 1e-05), kwargs = {})JÅ
+pkg.torch.onnx.name_scopesc['', 'enc4', 'enc4.3', 'enc4.3.block', 'enc4.3.block.4', '_native_batch_norm_legit_no_training_11']J…
+pkg.torch.onnx.stack_trace™File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+¿
+relu_9
+
+getitem_33add_3
+node_add_3"AddJä
+	namespace}: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.3: autoencoder.ResBlock/add_3: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jé
+pkg.torch.onnx.fx_nodet%add_3 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_9, %getitem_33), kwargs = {})J=
+pkg.torch.onnx.name_scopes['', 'enc4', 'enc4.3', 'add_3']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+∏
+add_3relu_11node_relu_11"ReluJè
+	namespaceÅ: autoencoder.UNetAutoencoder/enc4: torch.nn.modules.container.Sequential/enc4.3: autoencoder.ResBlock/relu_11: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÖ
+pkg.torch.onnx.fx_nodek%relu_11 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%add_3,), kwargs = {})J?
+pkg.torch.onnx.name_scopes!['', 'enc4', 'enc4.3', 'relu_11']Jú
+pkg.torch.onnx.stack_trace˝File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 106, in forward
+    e4 = self.enc4(e3)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+„
+relu_11
+val_138view	node_view"Reshape*
+	allowzero†J≤
+	namespace§: autoencoder.UNetAutoencoder/bottleneck_encode: torch.nn.modules.container.Sequential/bottleneck_encode.0: torch.nn.modules.flatten.Flatten/view: aten.view.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.flatten.Flatten', 'aten.view.default']Jè
+pkg.torch.onnx.fx_nodeu%view : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%relu_11, [1, 16384]), kwargs = {})JV
+pkg.torch.onnx.name_scopes8['', 'bottleneck_encode', 'bottleneck_encode.0', 'view']J‹
+pkg.torch.onnx.stack_traceΩFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 108, in forward
+    z = self.bottleneck_encode(e4)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/flatten.py", line 55, in forward
+    return input.flatten(self.start_dim, self.end_dim)
+Ì	
+view
+bottleneck_encode.1.weight
+bottleneck_encode.1.biaslinearnode_linear"Gemm*
+beta  Ä?†*
+transB†*
+alpha  Ä?†*
+transA †J¥
+	namespace¶: autoencoder.UNetAutoencoder/bottleneck_encode: torch.nn.modules.container.Sequential/bottleneck_encode.1: torch.nn.modules.linear.Linear/linear: aten.linear.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J¡
+pkg.torch.onnx.fx_node¶%linear : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%view, %p_bottleneck_encode_1_weight, %p_bottleneck_encode_1_bias), kwargs = {})JX
+pkg.torch.onnx.name_scopes:['', 'bottleneck_encode', 'bottleneck_encode.1', 'linear']Jÿ
+pkg.torch.onnx.stack_traceπFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 108, in forward
+    z = self.bottleneck_encode(e4)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+Ü
+
+linear
+bottleneck_decode.0.weight
+bottleneck_decode.0.biaslinear_1node_linear_1"Gemm*
+beta  Ä?†*
+transB†*
+alpha  Ä?†*
+transA †J∂
+	namespace®: autoencoder.UNetAutoencoder/bottleneck_decode: torch.nn.modules.container.Sequential/bottleneck_decode.0: torch.nn.modules.linear.Linear/linear_1: aten.linear.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.linear.Linear', 'aten.linear.default']J≈
+pkg.torch.onnx.fx_node™%linear_1 : [num_users=1] = call_function[target=torch.ops.aten.linear.default](args = (%linear, %p_bottleneck_decode_0_weight, %p_bottleneck_decode_0_bias), kwargs = {})JZ
+pkg.torch.onnx.name_scopes<['', 'bottleneck_decode', 'bottleneck_decode.0', 'linear_1']J„
+pkg.torch.onnx.stack_traceƒFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 109, in forward
+    d = self.bottleneck_decode(z).view_as(e4)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/linear.py", line 134, in forward
+    return F.linear(input, self.weight, self.bias)
+“
+linear_1relu_12node_relu_12"ReluJµ
+	namespaceß: autoencoder.UNetAutoencoder/bottleneck_decode: torch.nn.modules.container.Sequential/bottleneck_decode.1: torch.nn.modules.activation.ReLU/relu_12: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jà
+pkg.torch.onnx.fx_noden%relu_12 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%linear_1,), kwargs = {})JY
+pkg.torch.onnx.name_scopes;['', 'bottleneck_decode', 'bottleneck_decode.1', 'relu_12']J„
+pkg.torch.onnx.stack_traceƒFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 109, in forward
+    d = self.bottleneck_decode(z).view_as(e4)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ä
+relu_12
+val_144view_2node_view_2"Reshape*
+	allowzero†Jü
+	namespaceë: autoencoder.UNetAutoencoder/dec4: torch.nn.modules.container.Sequential/dec4.0: torch.nn.modules.conv.ConvTranspose2d/view_2: aten.view.defaultJ©
+pkg.torch.onnx.class_hierarchyÜ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.conv.ConvTranspose2d', 'aten.view.default']Jï
+pkg.torch.onnx.fx_node{%view_2 : [num_users=1] = call_function[target=torch.ops.aten.view.default](args = (%relu_12, [1, 256, 8, 8]), kwargs = {})J>
+pkg.torch.onnx.name_scopes ['', 'dec4', 'dec4.0', 'view_2']Jü
+pkg.torch.onnx.stack_traceÄFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 109, in forward
+    d = self.bottleneck_decode(z).view_as(e4)
+ç
+view_2
+dec4.0.weight
+dec4.0.weight_bias
+getitem_36node_ConvTranspose_355"ConvTranspose*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†*
+output_padding@ @ †J·
+	namespace”: autoencoder.UNetAutoencoder/dec4: torch.nn.modules.container.Sequential/dec4.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_12: aten._native_batch_norm_legit_no_training.defaultJC
+!pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvTransposeJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J®
+pkg.torch.onnx.fx_nodeç%_native_batch_norm_legit_no_training_12 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%convolution, %p_dec4_1_weight, %p_dec4_1_bias, %b_dec4_1_running_mean, %b_dec4_1_running_var, 0.1, 1e-05), kwargs = {})J_
+pkg.torch.onnx.name_scopesA['', 'dec4', 'dec4.1', '_native_batch_norm_legit_no_training_12']J≥
+pkg.torch.onnx.stack_traceîFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 111, in forward
+    d = self.dec4(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+â
+
+getitem_36relu_13node_relu_13"ReluJõ
+	namespaceç: autoencoder.UNetAutoencoder/dec4: torch.nn.modules.container.Sequential/dec4.2: torch.nn.modules.activation.ReLU/relu_13: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_13 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_36,), kwargs = {})J?
+pkg.torch.onnx.name_scopes!['', 'dec4', 'dec4.2', 'relu_13']J 
+pkg.torch.onnx.stack_trace´File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 111, in forward
+    d = self.dec4(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+±
+relu_8
+relu_13catnode_cat"Concat*
+axis†J@
+	namespace3: autoencoder.UNetAutoencoder/cat: aten.cat.defaultJU
+pkg.torch.onnx.class_hierarchy3['autoencoder.UNetAutoencoder', 'aten.cat.default']Jè
+pkg.torch.onnx.fx_nodeu%cat : [num_users=1] = call_function[target=torch.ops.aten.cat.default](args = ([%relu_8, %relu_13], 1), kwargs = {})J)
+pkg.torch.onnx.name_scopes['', 'cat']J£
+pkg.torch.onnx.stack_traceÑFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+ø
+cat
+dec4_fuse.0.weight
+dec4_fuse.0.weight_bias
+getitem_39node_Conv_357"Conv*
+group†*
+pads@ @ @ @ †*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JÎ
+	namespace›: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_13: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∫
+pkg.torch.onnx.fx_nodeü%_native_batch_norm_legit_no_training_13 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_12, %p_dec4_fuse_1_weight, %p_dec4_fuse_1_bias, %b_dec4_fuse_1_running_mean, %b_dec4_fuse_1_running_var, 0.1, 1e-05), kwargs = {})Ji
+pkg.torch.onnx.name_scopesK['', 'dec4_fuse', 'dec4_fuse.1', '_native_batch_norm_legit_no_training_13']J–
+pkg.torch.onnx.stack_trace±File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+∫
+
+getitem_39relu_14node_relu_14"ReluJ•
+	namespaceó: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.2: torch.nn.modules.activation.ReLU/relu_14: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_14 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_39,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec4_fuse', 'dec4_fuse.2', 'relu_14']JÁ
+pkg.torch.onnx.stack_trace»File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_14
+dec4_fuse.3.block.0.weight
+dec4_fuse.3.block.0.weight_bias
+getitem_42node_Conv_359"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.3: autoencoder.ResBlock/dec4_fuse.3.block: torch.nn.modules.container.Sequential/dec4_fuse.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_14: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_14 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_13, %p_dec4_fuse_3_block_1_weight, %p_dec4_fuse_3_block_1_bias, %b_dec4_fuse_3_block_1_running_mean, %b_dec4_fuse_3_block_1_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec4_fuse', 'dec4_fuse.3', 'dec4_fuse.3.block', 'dec4_fuse.3.block.1', '_native_batch_norm_legit_no_training_14']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+û
+
+getitem_42relu_15node_relu_15"ReluJà
+	namespace˙: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.3: autoencoder.ResBlock/dec4_fuse.3.block: torch.nn.modules.container.Sequential/dec4_fuse.3.block.2: torch.nn.modules.activation.ReLU/relu_15: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_15 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_42,), kwargs = {})Ju
+pkg.torch.onnx.name_scopesW['', 'dec4_fuse', 'dec4_fuse.3', 'dec4_fuse.3.block', 'dec4_fuse.3.block.2', 'relu_15']J˚
+pkg.torch.onnx.stack_trace‹File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_15
+dec4_fuse.3.block.3.weight
+dec4_fuse.3.block.3.weight_bias
+getitem_45node_Conv_361"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.3: autoencoder.ResBlock/dec4_fuse.3.block: torch.nn.modules.container.Sequential/dec4_fuse.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_15: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_15 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_14, %p_dec4_fuse_3_block_4_weight, %p_dec4_fuse_3_block_4_bias, %b_dec4_fuse_3_block_4_running_mean, %b_dec4_fuse_3_block_4_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec4_fuse', 'dec4_fuse.3', 'dec4_fuse.3.block', 'dec4_fuse.3.block.4', '_native_batch_norm_legit_no_training_15']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ú
+relu_14
+
+getitem_45add_4
+node_add_4"AddJï
+	namespaceá: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.3: autoencoder.ResBlock/add_4: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jè
+pkg.torch.onnx.fx_nodeu%add_4 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_14, %getitem_45), kwargs = {})JG
+pkg.torch.onnx.name_scopes)['', 'dec4_fuse', 'dec4_fuse.3', 'add_4']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Á
+add_4relu_16node_relu_16"ReluJô
+	namespaceã: autoencoder.UNetAutoencoder/dec4_fuse: torch.nn.modules.container.Sequential/dec4_fuse.3: autoencoder.ResBlock/relu_16: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÖ
+pkg.torch.onnx.fx_nodek%relu_16 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%add_4,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec4_fuse', 'dec4_fuse.3', 'relu_16']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 112, in forward
+    d = self.dec4_fuse(torch.cat([e3, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+ê
+relu_16
+dec3.0.weight
+dec3.0.weight_bias
+getitem_48node_ConvTranspose_362"ConvTranspose*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†*
+output_padding@ @ †J·
+	namespace”: autoencoder.UNetAutoencoder/dec3: torch.nn.modules.container.Sequential/dec3.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_16: aten._native_batch_norm_legit_no_training.defaultJC
+!pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvTransposeJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J™
+pkg.torch.onnx.fx_nodeè%_native_batch_norm_legit_no_training_16 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%convolution_1, %p_dec3_1_weight, %p_dec3_1_bias, %b_dec3_1_running_mean, %b_dec3_1_running_var, 0.1, 1e-05), kwargs = {})J_
+pkg.torch.onnx.name_scopesA['', 'dec3', 'dec3.1', '_native_batch_norm_legit_no_training_16']J≥
+pkg.torch.onnx.stack_traceîFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 113, in forward
+    d = self.dec3(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+â
+
+getitem_48relu_17node_relu_17"ReluJõ
+	namespaceç: autoencoder.UNetAutoencoder/dec3: torch.nn.modules.container.Sequential/dec3.2: torch.nn.modules.activation.ReLU/relu_17: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_17 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_48,), kwargs = {})J?
+pkg.torch.onnx.name_scopes!['', 'dec3', 'dec3.2', 'relu_17']J 
+pkg.torch.onnx.stack_trace´File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 113, in forward
+    d = self.dec3(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ª
+relu_5
+relu_17cat_1
+node_cat_1"Concat*
+axis†JB
+	namespace5: autoencoder.UNetAutoencoder/cat_1: aten.cat.defaultJU
+pkg.torch.onnx.class_hierarchy3['autoencoder.UNetAutoencoder', 'aten.cat.default']Jë
+pkg.torch.onnx.fx_nodew%cat_1 : [num_users=1] = call_function[target=torch.ops.aten.cat.default](args = ([%relu_5, %relu_17], 1), kwargs = {})J+
+pkg.torch.onnx.name_scopes['', 'cat_1']J£
+pkg.torch.onnx.stack_traceÑFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+¡
+cat_1
+dec3_fuse.0.weight
+dec3_fuse.0.weight_bias
+getitem_51node_Conv_364"Conv*
+group†*
+pads@ @ @ @ †*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JÎ
+	namespace›: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_17: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∫
+pkg.torch.onnx.fx_nodeü%_native_batch_norm_legit_no_training_17 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_15, %p_dec3_fuse_1_weight, %p_dec3_fuse_1_bias, %b_dec3_fuse_1_running_mean, %b_dec3_fuse_1_running_var, 0.1, 1e-05), kwargs = {})Ji
+pkg.torch.onnx.name_scopesK['', 'dec3_fuse', 'dec3_fuse.1', '_native_batch_norm_legit_no_training_17']J–
+pkg.torch.onnx.stack_trace±File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+∫
+
+getitem_51relu_18node_relu_18"ReluJ•
+	namespaceó: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.2: torch.nn.modules.activation.ReLU/relu_18: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_18 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_51,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec3_fuse', 'dec3_fuse.2', 'relu_18']JÁ
+pkg.torch.onnx.stack_trace»File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_18
+dec3_fuse.3.block.0.weight
+dec3_fuse.3.block.0.weight_bias
+getitem_54node_Conv_366"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.3: autoencoder.ResBlock/dec3_fuse.3.block: torch.nn.modules.container.Sequential/dec3_fuse.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_18: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_18 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_16, %p_dec3_fuse_3_block_1_weight, %p_dec3_fuse_3_block_1_bias, %b_dec3_fuse_3_block_1_running_mean, %b_dec3_fuse_3_block_1_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec3_fuse', 'dec3_fuse.3', 'dec3_fuse.3.block', 'dec3_fuse.3.block.1', '_native_batch_norm_legit_no_training_18']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+û
+
+getitem_54relu_19node_relu_19"ReluJà
+	namespace˙: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.3: autoencoder.ResBlock/dec3_fuse.3.block: torch.nn.modules.container.Sequential/dec3_fuse.3.block.2: torch.nn.modules.activation.ReLU/relu_19: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_19 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_54,), kwargs = {})Ju
+pkg.torch.onnx.name_scopesW['', 'dec3_fuse', 'dec3_fuse.3', 'dec3_fuse.3.block', 'dec3_fuse.3.block.2', 'relu_19']J˚
+pkg.torch.onnx.stack_trace‹File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_19
+dec3_fuse.3.block.3.weight
+dec3_fuse.3.block.3.weight_bias
+getitem_57node_Conv_368"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.3: autoencoder.ResBlock/dec3_fuse.3.block: torch.nn.modules.container.Sequential/dec3_fuse.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_19: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_19 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_17, %p_dec3_fuse_3_block_4_weight, %p_dec3_fuse_3_block_4_bias, %b_dec3_fuse_3_block_4_running_mean, %b_dec3_fuse_3_block_4_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec3_fuse', 'dec3_fuse.3', 'dec3_fuse.3.block', 'dec3_fuse.3.block.4', '_native_batch_norm_legit_no_training_19']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ú
+relu_18
+
+getitem_57add_5
+node_add_5"AddJï
+	namespaceá: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.3: autoencoder.ResBlock/add_5: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jè
+pkg.torch.onnx.fx_nodeu%add_5 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_18, %getitem_57), kwargs = {})JG
+pkg.torch.onnx.name_scopes)['', 'dec3_fuse', 'dec3_fuse.3', 'add_5']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Á
+add_5relu_20node_relu_20"ReluJô
+	namespaceã: autoencoder.UNetAutoencoder/dec3_fuse: torch.nn.modules.container.Sequential/dec3_fuse.3: autoencoder.ResBlock/relu_20: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÖ
+pkg.torch.onnx.fx_nodek%relu_20 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%add_5,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec3_fuse', 'dec3_fuse.3', 'relu_20']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 114, in forward
+    d = self.dec3_fuse(torch.cat([e2, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+ê
+relu_20
+dec2.0.weight
+dec2.0.weight_bias
+getitem_60node_ConvTranspose_369"ConvTranspose*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†*
+output_padding@ @ †J·
+	namespace”: autoencoder.UNetAutoencoder/dec2: torch.nn.modules.container.Sequential/dec2.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_20: aten._native_batch_norm_legit_no_training.defaultJC
+!pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvTransposeJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J™
+pkg.torch.onnx.fx_nodeè%_native_batch_norm_legit_no_training_20 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%convolution_2, %p_dec2_1_weight, %p_dec2_1_bias, %b_dec2_1_running_mean, %b_dec2_1_running_var, 0.1, 1e-05), kwargs = {})J_
+pkg.torch.onnx.name_scopesA['', 'dec2', 'dec2.1', '_native_batch_norm_legit_no_training_20']J≥
+pkg.torch.onnx.stack_traceîFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 115, in forward
+    d = self.dec2(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+â
+
+getitem_60relu_21node_relu_21"ReluJõ
+	namespaceç: autoencoder.UNetAutoencoder/dec2: torch.nn.modules.container.Sequential/dec2.2: torch.nn.modules.activation.ReLU/relu_21: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_21 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_60,), kwargs = {})J?
+pkg.torch.onnx.name_scopes!['', 'dec2', 'dec2.2', 'relu_21']J 
+pkg.torch.onnx.stack_trace´File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 115, in forward
+    d = self.dec2(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ª
+relu_2
+relu_21cat_2
+node_cat_2"Concat*
+axis†JB
+	namespace5: autoencoder.UNetAutoencoder/cat_2: aten.cat.defaultJU
+pkg.torch.onnx.class_hierarchy3['autoencoder.UNetAutoencoder', 'aten.cat.default']Jë
+pkg.torch.onnx.fx_nodew%cat_2 : [num_users=1] = call_function[target=torch.ops.aten.cat.default](args = ([%relu_2, %relu_21], 1), kwargs = {})J+
+pkg.torch.onnx.name_scopes['', 'cat_2']J£
+pkg.torch.onnx.stack_traceÑFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+¡
+cat_2
+dec2_fuse.0.weight
+dec2_fuse.0.weight_bias
+getitem_63node_Conv_371"Conv*
+group†*
+pads@ @ @ @ †*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JÎ
+	namespace›: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_21: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J∫
+pkg.torch.onnx.fx_nodeü%_native_batch_norm_legit_no_training_21 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_18, %p_dec2_fuse_1_weight, %p_dec2_fuse_1_bias, %b_dec2_fuse_1_running_mean, %b_dec2_fuse_1_running_var, 0.1, 1e-05), kwargs = {})Ji
+pkg.torch.onnx.name_scopesK['', 'dec2_fuse', 'dec2_fuse.1', '_native_batch_norm_legit_no_training_21']J–
+pkg.torch.onnx.stack_trace±File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+∫
+
+getitem_63relu_22node_relu_22"ReluJ•
+	namespaceó: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.2: torch.nn.modules.activation.ReLU/relu_22: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_22 : [num_users=2] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_63,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec2_fuse', 'dec2_fuse.2', 'relu_22']JÁ
+pkg.torch.onnx.stack_trace»File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_22
+dec2_fuse.3.block.0.weight
+dec2_fuse.3.block.0.weight_bias
+getitem_66node_Conv_373"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.3: autoencoder.ResBlock/dec2_fuse.3.block: torch.nn.modules.container.Sequential/dec2_fuse.3.block.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_22: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_22 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_19, %p_dec2_fuse_3_block_1_weight, %p_dec2_fuse_3_block_1_bias, %b_dec2_fuse_3_block_1_running_mean, %b_dec2_fuse_3_block_1_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec2_fuse', 'dec2_fuse.3', 'dec2_fuse.3.block', 'dec2_fuse.3.block.1', '_native_batch_norm_legit_no_training_22']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+û
+
+getitem_66relu_23node_relu_23"ReluJà
+	namespace˙: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.3: autoencoder.ResBlock/dec2_fuse.3.block: torch.nn.modules.container.Sequential/dec2_fuse.3.block.2: torch.nn.modules.activation.ReLU/relu_23: aten.relu.defaultJÂ
+pkg.torch.onnx.class_hierarchy¬['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_23 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_66,), kwargs = {})Ju
+pkg.torch.onnx.name_scopesW['', 'dec2_fuse', 'dec2_fuse.3', 'dec2_fuse.3.block', 'dec2_fuse.3.block.2', 'relu_23']J˚
+pkg.torch.onnx.stack_trace‹File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+ÿ
+relu_23
+dec2_fuse.3.block.3.weight
+dec2_fuse.3.block.3.weight_bias
+getitem_69node_Conv_375"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†JŒ
+	namespace¿: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.3: autoencoder.ResBlock/dec2_fuse.3.block: torch.nn.modules.container.Sequential/dec2_fuse.3.block.4: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_23: aten._native_batch_norm_legit_no_training.defaultJV
+!pkg.onnxscript.rewriter.rule_name1FuseBatchNormIntoConv, RemoveOptionalBiasFromConvJã
+pkg.torch.onnx.class_hierarchyË['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J⁄
+pkg.torch.onnx.fx_nodeø%_native_batch_norm_legit_no_training_23 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%conv2d_20, %p_dec2_fuse_3_block_4_weight, %p_dec2_fuse_3_block_4_bias, %b_dec2_fuse_3_block_4_running_mean, %b_dec2_fuse_3_block_4_running_var, 0.1, 1e-05), kwargs = {})Jï
+pkg.torch.onnx.name_scopesw['', 'dec2_fuse', 'dec2_fuse.3', 'dec2_fuse.3.block', 'dec2_fuse.3.block.4', '_native_batch_norm_legit_no_training_23']J‰
+pkg.torch.onnx.stack_trace≈File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+Ú
+relu_22
+
+getitem_69add_6
+node_add_6"AddJï
+	namespaceá: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.3: autoencoder.ResBlock/add_6: aten.add.TensorJï
+pkg.torch.onnx.class_hierarchys['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.add.Tensor']Jè
+pkg.torch.onnx.fx_nodeu%add_6 : [num_users=1] = call_function[target=torch.ops.aten.add.Tensor](args = (%relu_22, %getitem_69), kwargs = {})JG
+pkg.torch.onnx.name_scopes)['', 'dec2_fuse', 'dec2_fuse.3', 'add_6']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+Á
+add_6relu_24node_relu_24"ReluJô
+	namespaceã: autoencoder.UNetAutoencoder/dec2_fuse: torch.nn.modules.container.Sequential/dec2_fuse.3: autoencoder.ResBlock/relu_24: aten.relu.defaultJó
+pkg.torch.onnx.class_hierarchyu['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'autoencoder.ResBlock', 'aten.relu.default']JÖ
+pkg.torch.onnx.fx_nodek%relu_24 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%add_6,), kwargs = {})JI
+pkg.torch.onnx.name_scopes+['', 'dec2_fuse', 'dec2_fuse.3', 'relu_24']J∑
+pkg.torch.onnx.stack_traceòFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 116, in forward
+    d = self.dec2_fuse(torch.cat([e1, d], dim=1))
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 47, in forward
+    return torch.relu(x + self.block(x))
+ê
+relu_24
+dec1.0.weight
+dec1.0.weight_bias
+getitem_72node_ConvTranspose_376"ConvTranspose*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†*
+output_padding@ @ †J·
+	namespace”: autoencoder.UNetAutoencoder/dec1: torch.nn.modules.container.Sequential/dec1.1: torch.nn.modules.batchnorm.BatchNorm2d/_native_batch_norm_legit_no_training_24: aten._native_batch_norm_legit_no_training.defaultJC
+!pkg.onnxscript.rewriter.rule_nameFuseBatchNormIntoConvTransposeJ 
+pkg.torch.onnx.class_hierarchyß['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.batchnorm.BatchNorm2d', 'aten._native_batch_norm_legit_no_training.default']J™
+pkg.torch.onnx.fx_nodeè%_native_batch_norm_legit_no_training_24 : [num_users=1] = call_function[target=torch.ops.aten._native_batch_norm_legit_no_training.default](args = (%convolution_3, %p_dec1_1_weight, %p_dec1_1_bias, %b_dec1_1_running_mean, %b_dec1_1_running_var, 0.1, 1e-05), kwargs = {})J_
+pkg.torch.onnx.name_scopesA['', 'dec1', 'dec1.1', '_native_batch_norm_legit_no_training_24']J≥
+pkg.torch.onnx.stack_traceîFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 117, in forward
+    d = self.dec1(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/batchnorm.py", line 194, in forward
+    return F.batch_norm(
+â
+
+getitem_72relu_25node_relu_25"ReluJõ
+	namespaceç: autoencoder.UNetAutoencoder/dec1: torch.nn.modules.container.Sequential/dec1.2: torch.nn.modules.activation.ReLU/relu_25: aten.relu.defaultJ§
+pkg.torch.onnx.class_hierarchyÅ['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.activation.ReLU', 'aten.relu.default']Jä
+pkg.torch.onnx.fx_nodep%relu_25 : [num_users=1] = call_function[target=torch.ops.aten.relu.default](args = (%getitem_72,), kwargs = {})J?
+pkg.torch.onnx.name_scopes!['', 'dec1', 'dec1.2', 'relu_25']J 
+pkg.torch.onnx.stack_trace´File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 117, in forward
+    d = self.dec1(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/activation.py", line 143, in forward
+    return F.relu(input, inplace=self.inplace)
+æ	
+relu_25
+dec1.3.weight
+dec1.3.bias	conv2d_21node_conv2d_21"Conv*
+group†*
+pads@@@@†*
+strides@@†*
+auto_pad"NOTSET†*
+	dilations@@†Jõ
+	namespaceç: autoencoder.UNetAutoencoder/dec1: torch.nn.modules.container.Sequential/dec1.3: torch.nn.modules.conv.Conv2d/conv2d_21: aten.conv2d.defaultJ°
+pkg.torch.onnx.class_hierarchy['autoencoder.UNetAutoencoder', 'torch.nn.modules.container.Sequential', 'torch.nn.modules.conv.Conv2d', 'aten.conv2d.default']JΩ
+pkg.torch.onnx.fx_node¢%conv2d_21 : [num_users=1] = call_function[target=torch.ops.aten.conv2d.default](args = (%relu_25, %p_dec1_3_weight, %p_dec1_3_bias, [1, 1], [1, 1]), kwargs = {})JA
+pkg.torch.onnx.name_scopes#['', 'dec1', 'dec1.3', 'conv2d_21']J“
+pkg.torch.onnx.stack_trace≥File "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 117, in forward
+    d = self.dec1(d)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/container.py", line 253, in forward
+    input = module(input)
+  File "/Users/void/Documents/Codes/o/venv/lib/python3.14/site-packages/torch/nn/modules/conv.py", line 553, in forward
+    return self._conv_forward(input, self.weight, self.bias)
+ú
+	conv2d_21outputnode_sigmoid"SigmoidJH
+	namespace;: autoencoder.UNetAutoencoder/sigmoid: aten.sigmoid.defaultJY
+pkg.torch.onnx.class_hierarchy7['autoencoder.UNetAutoencoder', 'aten.sigmoid.default']Jå
+pkg.torch.onnx.fx_noder%sigmoid : [num_users=1] = call_function[target=torch.ops.aten.sigmoid.default](args = (%conv2d_21,), kwargs = {})J-
+pkg.torch.onnx.name_scopes['', 'sigmoid']Jå
+pkg.torch.onnx.stack_tracenFile "/Users/void/Documents/Codes/o/tools/../autoencoder.py", line 118, in forward
+    return torch.sigmoid(d)
+main_graph*Y Benc1.0.weightj
+locationmodel.onnx.dataj
+offset10432j
+length3456p*^ÄBbottleneck_encode.1.biasj
+locationmodel.onnx.dataj
+offset8384j
+length2048p*XBdec1.3.weightj
+locationmodel.onnx.dataj
+offset6656j
+length1728p*Bdec1.3.biasJzÏ	Ω˜|ÖΩC"åΩ*b  Benc1.3.block.0.weightj
+locationmodel.onnx.dataj
+offset87616j
+length36864p*c  Benc1.3.block.3.weightj
+locationmodel.onnx.dataj
+offset124480j
+length36864p*[@ Benc2.0.weightj
+locationmodel.onnx.dataj
+offset300608j
+length73728p*d@@Benc2.3.block.0.weightj
+locationmodel.onnx.dataj
+offset636480j
+length147456p*d@@Benc2.3.block.3.weightj
+locationmodel.onnx.dataj
+offset783936j
+length147456p*^Ä@Benc3.0.weightj
+locationmodel.onnx.dataj
+offset1226304j
+length294912p*gÄÄBenc3.3.block.0.weightj
+locationmodel.onnx.dataj
+offset2045504j
+length589824p*gÄÄBenc3.3.block.3.weightj
+locationmodel.onnx.dataj
+offset2635328j
+length589824p*`ÄÄBenc4.0.weightj
+locationmodel.onnx.dataj
+offset4456448j
+length1179648p*hÄÄBenc4.3.block.0.weightj
+locationmodel.onnx.dataj
+offset7733248j
+length2359296p*iÄÄBenc4.3.block.3.weightj
+locationmodel.onnx.dataj
+offset10092544j
+length2359296p*lÄÄÄBbottleneck_encode.1.weightj
+locationmodel.onnx.dataj
+offset12451840j
+length33554432p*lÄÄÄBbottleneck_decode.0.weightj
+locationmodel.onnx.dataj
+offset46006272j
+length33554432p*bÄÄBbottleneck_decode.0.biasj
+locationmodel.onnx.dataj
+offset235072j
+length65536p*`ÄÄBdec4.0.weightj
+locationmodel.onnx.dataj
+offset5636096j
+length2097152p*cÄÄBdec4_fuse.0.weightj
+locationmodel.onnx.dataj
+offset374336j
+length131072p*lÄÄBdec4_fuse.3.block.0.weightj
+locationmodel.onnx.dataj
+offset3225152j
+length589824p*lÄÄBdec4_fuse.3.block.3.weightj
+locationmodel.onnx.dataj
+offset3814976j
+length589824p*^Ä@Bdec3.0.weightj
+locationmodel.onnx.dataj
+offset1521216j
+length524288p*`@ÄBdec3_fuse.0.weightj
+locationmodel.onnx.dataj
+offset22080j
+length32768p*i@@Bdec3_fuse.3.block.0.weightj
+locationmodel.onnx.dataj
+offset931392j
+length147456p*j@@Bdec3_fuse.3.block.3.weightj
+locationmodel.onnx.dataj
+offset1078848j
+length147456p*\@ Bdec2.0.weightj
+locationmodel.onnx.dataj
+offset505408j
+length131072p*^ @Bdec2_fuse.0.weightj
+locationmodel.onnx.dataj
+offset13888j
+length8192p*h  Bdec2_fuse.3.block.0.weightj
+locationmodel.onnx.dataj
+offset161344j
+length36864p*h  Bdec2_fuse.3.block.3.weightj
+locationmodel.onnx.dataj
+offset198208j
+length36864p*Z Bdec1.0.weightj
+locationmodel.onnx.dataj
+offset54848j
+length32768p*Bval_138J        @      */Bval_144J                             *õ Benc1.0.weight_biasJÄ°ô¿åﬂ¿6gÛ?àË?xn@‰¥+?\P@T[˚øm±⁄?≤b@%*@ÂÂ¿≈@D–æ±â¸ø<@≈WøTFº#˙øgT÷ø¿R@•L@-é@–C¿w¿~Ñ@xæø∞(ªøÉá5?Åƒ¿`é?*£ Benc1.3.block.0.weight_biasJÄÔl>Ëô?ëi√æsà#?bm?3å≥æÔï¨æ$"?ΩX:?I•›>4/>zSømË(?∑AT>≥<õºvæªˇΩad∞>’çÎ>` )?i(øúƒIø…¶Ω7s?°∞}?"¶èøŸæóø_≠¯=V∑æƒƒ∫øì%çø‘ÛLø*£ Benc1.3.block.3.weight_biasJÄzXK?mm[?‹ı=?£@æ8'€>u1ø>Âﬁ>^p&?4√Z?ÚœîæÔéDøòÔ=’>™º<:ø3Ÿà=÷Õ˛ºÀ
+?¡`L?ªPˆΩ`5f>ºû\ø”0ø‘›Tætx?û´îΩ”ˇ6æÿŸ,?1yâæ$ü?IŸQ?®lpæ3Kd?*õ@Benc2.0.weight_biasJÄV^ø4÷øÏ¬•?}√§?≤¥?PÆøñE‰>{π&øﬁÜøÅ…∞ææc	ø5ø8„UøS#≠?#Nø?⁄
+ø$ÎSø•ç8øƒ\}øz{¬ø.‹©æ4ˇçøÈÖ)ø–;Ü?ßÏäø„¬õæ'⁄Qø´˛~øårπ?]FBøÌÒ¢?ñ~øÎ˚°>Rõœæ•–æﬁ7høÎèø≠à?rW›æù,øXØ¶øëCøN	æ?9GÑøä©ø◊O≈=ˇÒCævóºø∫^≈>¡`aø`¶øRnC>b]æºJf°ø>˛·Ω‡w‰ø⁄{øæ˛¶æïS?Ê˜øâ€+ø‡√)øÒ]ødø*£@Benc2.3.block.0.weight_biasJÄ…ôæˇ3cæ¬}Fæ¬Í›æÓÎ≤æø˚ÃæcØaøï $Ωìàæ1h!ø:r˙Ωéz∏æË"`øÚ¯ævπ≠æÓ‡ æ5õ3?+Ìæ îR>‘”ãæoı¢æ$j«=‡±øzS øt˜ ø˙ÉiΩvÊºæßåGæí—ødYøø»øÛBô>W»XæîÕ¥æ÷™…æ˛CøïÀçæAÊø,≈æ⁄€øÓÁßæòùêæ?bü˚>Ttø Õ.>ÿÒwΩÜÄæø˛&æ˝¨åæÿÒ^Ω“Oø∑$øÑ˝øÊv9?Ωîø2™iΩù„>é˚°æ°ëyΩñØ
+?íâøE?#?†úï>*£@Benc2.3.block.3.weight_biasJÄ"Èø)˜æﬂvÈæÿ(ÙæÔœæTy’æ»ÂæZù>&≤æäŸ¨æ·kÚæå˛>ıkõæÀÀæú,øæ¡"øïÏ>j≤+?â¥Õælç„æLƒö>ä,ææØÓ◊æÌ√ækûãæIèÚæ6Gæø¿∞>T+ø®Z=>âXËæ÷ÆÇæ÷Ùôæmˆˆæç  øoËæôÜÌ>3Qæ»*D>RÓæ÷˛kæ¸ ?°ﬂ>•6Îæ◊7·æ£>˝æ˙:¸>ŸOèæ÷ìÉ>ıﬂﬁ>Iøæ<‡“æRA¿æÀ&øΩ˜ı>∑ìøËı€æ»%˙>ÂvÌæ*wÚ>YW˙æñ˜?M”ﬂæÀ´?*TÄBenc3.0.weight_biasj
+locationmodel.onnx.dataj
+offset0j
+length512p*^ÄBenc3.3.block.0.weight_biasj
+locationmodel.onnx.dataj
+offset512j
+length512p*_ÄBenc3.3.block.3.weight_biasj
+locationmodel.onnx.dataj
+offset1024j
+length512p*XÄBenc4.0.weight_biasj
+locationmodel.onnx.dataj
+offset3584j
+length1024p*`ÄBenc4.3.block.0.weight_biasj
+locationmodel.onnx.dataj
+offset4608j
+length1024p*`ÄBenc4.3.block.3.weight_biasj
+locationmodel.onnx.dataj
+offset5632j
+length1024p*WÄBdec4.0.weight_biasj
+locationmodel.onnx.dataj
+offset1536j
+length512p*\ÄBdec4_fuse.0.weight_biasj
+locationmodel.onnx.dataj
+offset2048j
+length512p*dÄBdec4_fuse.3.block.0.weight_biasj
+locationmodel.onnx.dataj
+offset2560j
+length512p*dÄBdec4_fuse.3.block.3.weight_biasj
+locationmodel.onnx.dataj
+offset3072j
+length512p*õ@Bdec3.0.weight_biasJÄe§ø -ø›2ı>u™æ‰ø	ø®uø|–fæùo#ø/Åæ÷¬°=LKøÍY±æ%¥>sw*øvd≠Ω2†—>‹¢>°ª]æÔB,øqïøâ(+ø0∫æ#éú>HN5øπ*>§-¡æØ0ø®ﬁáæˆ√Ω´	øûüïæI9âæ§Ù¶>+ÔælK´æá:»>SoJΩîM5øoF>Å˘¥>?ˆøj¶±æ∆M‚æµøV@ø¿-ø»:ΩÙ
+>–ª¯=,ó»>?ñ'ø¶vùæ"Iöæ!áOø˘îê>™"øæo#&øk>j¨^=^WÕ>>ÅΩæÌ;0ø¡=∏eøæ*†@Bdec3_fuse.0.weight_biasJÄ‹@?c ªæΩ6øPÇñæoøææ/?w”øb}øÔ5@ø?+løNíøìøü;3ø€Î?F≥ÿ>Ü¢Ωç£ø%ÌæÃû;ø% øÍ”5?ƒCøä"ø Í‰>‡·/ø/∑+æ´øø∫8µæΩµæˆΩ2ø©`ÆæÅú,øˆ`Ûæï€‰æ€æ˘æ´≤ﬂæ™”æXTq=_´3æ:ëﬂ>8ôÓΩDJ•æÅH?åxº>aïæÊﬁ>2MÖΩ≥˜/øï?}Ìÿ>“[?ﬂ˘¯Ω¯âUøa(∂æÌ=ôΩ$ÛŸæµ§ÛæDü.øVÖ ?mŸ%ø{©>è1•æTÎ∆ΩÊ%:ø*®@Bdec3_fuse.3.block.0.weight_biasJÄ{ëæy6ø]õœæRoR>ê‚æû”æx É>jÑR>eÆ>>;>U öæ^A[æ–Æ±>~Ω=m|ø{´´æ
+ ¶æ\?ƒ>ΩYˆæ»NŒ>•\îæˇÑ“æ1£>*˚=2∏æ“Ã∑æˇ	≈>"’∆>˙Ω∂æá˜æn;Å>ˆùæ¨–Ü=∆$ûæÚ«°æ!`†>Ä“î>…?ÿ{ºæ¨£¬>4Ù∫æL.ﬂæûÊ∆æ2∂øÑ˝ºæal›æ«ªæ›Åø=SÆ=ƒº¥æ≤ˇ±æë3ÿæ(rÓΩêªØæYXî>·©°>˚5˜>Ωô#øißæVEdæ+y“æS›≠>Âf±æ0—>*®@Bdec3_fuse.3.block.3.weight_biasJÄƒ=èæ˘)∞æ;¢æ¡¬ø’<ûæŒÉæ¯jΩY|HæXºæØÀæífå>H_>`sÄ>˜˛">NÅ∑ΩrÌßææöNæ~7¥æ®êæxcçæÑe¥æMØØæä
+Læü{≤>∞?æ6Kºæë6æéYæ$5Hæ<…»ær†æøK€æˇ≤ØæäînæãêŒæÈTæêdûæI_Ææ∏ç2Ωø•æîÖF>öQ≠æv(8æ±Ÿ'>	yÿæ>ÊÅæº»ø„p;æ™ÓΩ	æZ!3æf,–æÁ∫ïæ?9öæ R>{Ys>GjÄ>8Vì>]ÍØ>Áﬁø_2µæÌ~ñæ‡=>>çsø*õ Bdec2.0.weight_biasJÄíqæKø:æ[q9æ®Y≤=◊ﬂæÔNæÇ;µ=ìÖÑ>ö}‘=.'Ñæ∫>8©8;∞˛AæÇ™)æA1Qæª‹@æ˝>∆]æ-GïæÖÓ∫ΩâÊ7æ-≤‘ΩŸµﬂΩ* æ7PâæÆÙ;æ!≤!>…>Ωı⁄Ì<`Téæ‘˛º:-%>*† Bdec2_fuse.0.weight_biasJÄŒßøJ^øà>‹ÜÂºÒ∏>°ŸÔ=Mõ>≠QÄæi%,ø©ã˝ºµ7 >_ª=?”ÂµæNr*ø}L>˛€É>€V?·ÅﬁΩçråæq1;>Q@R>7ÜûææÍ%ø'øg4Læ7-ø\’ã=˙ÏÉ?ÙÁuøe¬ΩÄÃvøE≠kø*® Bdec2_fuse.3.block.0.weight_biasJÄ—oÿ>©·ÂæÃ¥Ë>ù≠3æ?t?XigΩ≈ìtΩ˝~>F≥EønŒ*>NÈ?fÁR?ôCóæ>Âﬁæ`“¨æ·¿>^˛:?H$˝Ωúôæ‘Íg>]$øCÖ>ˇw’æhÏêæÔÒ*øÅ‚ø$‡Õæ{Ωº>≥Dø!køS;ø*® Bdec2_fuse.3.block.3.weight_biasJÄ$Ü˛ΩŸÀ”æò¥ øßçß=C=ß>7éeæåÍ•æ‰©ææC:øæ,<0æuﬂæzAøO}Ωù˝‘>yÁæëª>|Ó>·«Ω
+@<«◊òæ˜æ —|æIÇ>Aiæû∆æïêy>åÕ/æ›@8>Õ°√>Î∫ñæ¯˛hæõzÀ>*ZBdec1.0.weight_biasJ@Ã÷æíÜ†æ ª{Ø£>’›ΩÙﬁæFÚ¯Ω‡ã9=[7=&∏≠>gî=q^>HL=≤Jê==k…Ω”®ïΩZ«
+input
+
+
+
+Ä
+Ä"=
+/pkg.torch.export.graph_signature.InputSpec.kind
+USER_INPUT"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"&
+!pkg.torch.onnx.original_node_namexbë
+output
+
+
+
+Ä
+Ä"?
+0pkg.torch.export.graph_signature.OutputSpec.kindUSER_OUTPUT",
+!pkg.torch.onnx.original_node_namesigmoidj'
+enc1.0.weight
+
+ 
+
+
+jÂ
+bottleneck_encode.1.bias
+	
+Ä"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"?
+!pkg.torch.onnx.original_node_namep_bottleneck_encode_1_biasj⁄
+dec1.3.weight
+
+
+
+
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"4
+!pkg.torch.onnx.original_node_namep_dec1_3_weightj 
+dec1.3.bias
+
+
+"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"2
+!pkg.torch.onnx.original_node_namep_dec1_3_biasj/
+enc1.3.block.0.weight
+
+ 
+ 
+
+j/
+enc1.3.block.3.weight
+
+ 
+ 
+
+j'
+enc2.0.weight
+
+@
+ 
+
+j/
+enc2.3.block.0.weight
+
+@
+@
+
+j/
+enc2.3.block.3.weight
+
+@
+@
+
+j(
+enc3.0.weight
+
+Ä
+@
+
+j1
+enc3.3.block.0.weight
+
+Ä
+Ä
+
+j1
+enc3.3.block.3.weight
+
+Ä
+Ä
+
+j)
+enc4.0.weight
+
+Ä
+Ä
+
+j1
+enc4.3.block.0.weight
+
+Ä
+Ä
+
+j1
+enc4.3.block.3.weight
+
+Ä
+Ä
+
+jÔ
+bottleneck_encode.1.weight
+
+Ä
+ÄÄ"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"A
+!pkg.torch.onnx.original_node_namep_bottleneck_encode_1_weightjÔ
+bottleneck_decode.0.weight
+
+ÄÄ
+Ä"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"A
+!pkg.torch.onnx.original_node_namep_bottleneck_decode_0_weightjÊ
+bottleneck_decode.0.bias
+
+
+ÄÄ"<
+/pkg.torch.export.graph_signature.InputSpec.kind	PARAMETER"=
+5pkg.torch.export.graph_signature.InputSpec.persistentNone"?
+!pkg.torch.onnx.original_node_namep_bottleneck_decode_0_biasj)
+dec4.0.weight
+
+Ä
+Ä
+
+j.
+dec4_fuse.0.weight
+
+Ä
+Ä
+
+j6
+dec4_fuse.3.block.0.weight
+
+Ä
+Ä
+
+j6
+dec4_fuse.3.block.3.weight
+
+Ä
+Ä
+
+j(
+dec3.0.weight
+
+Ä
+@
+
+j-
+dec3_fuse.0.weight
+
+@
+Ä
+
+j4
+dec3_fuse.3.block.0.weight
+
+@
+@
+
+j4
+dec3_fuse.3.block.3.weight
+
+@
+@
+
+j'
+dec2.0.weight
+
+@
+ 
+
+j,
+dec2_fuse.0.weight
+
+ 
+@
+
+j4
+dec2_fuse.3.block.0.weight
+
+ 
+ 
+
+j4
+dec2_fuse.3.block.3.weight
+
+ 
+ 
+
+j'
+dec1.0.weight
+
+ 
+
+
+jU
+val_138
+
+
+">
+$pkg.onnxscript.optimizer.folded_from['val_136', 'val_137']jk
+val_144
+
+
+"T
+$pkg.onnxscript.optimizer.folded_from,['val_140', 'val_141', 'val_142', 'val_143']j 
+enc1.0.weight_bias
+
+
+ j(
+enc1.3.block.0.weight_bias
+
+
+ j(
+enc1.3.block.3.weight_bias
+
+
+ j 
+enc2.0.weight_bias
+
+
+@j(
+enc2.3.block.0.weight_bias
+
+
+@j(
+enc2.3.block.3.weight_bias
+
+
+@j!
+enc3.0.weight_bias
+	
+Äj)
+enc3.3.block.0.weight_bias
+	
+Äj)
+enc3.3.block.3.weight_bias
+	
+Äj!
+enc4.0.weight_bias
+	
+Äj)
+enc4.3.block.0.weight_bias
+	
+Äj)
+enc4.3.block.3.weight_bias
+	
+Äj!
+dec4.0.weight_bias
+	
+Äj&
+dec4_fuse.0.weight_bias
+	
+Äj.
+dec4_fuse.3.block.0.weight_bias
+	
+Äj.
+dec4_fuse.3.block.3.weight_bias
+	
+Äj 
+dec3.0.weight_bias
+
+
+@j%
+dec3_fuse.0.weight_bias
+
+
+@j-
+dec3_fuse.3.block.0.weight_bias
+
+
+@j-
+dec3_fuse.3.block.3.weight_bias
+
+
+@j 
+dec2.0.weight_bias
+
+
+ j%
+dec2_fuse.0.weight_bias
+
+
+ j-
+dec2_fuse.3.block.0.weight_bias
+
+
+ j-
+dec2_fuse.3.block.3.weight_bias
+
+
+ j 
+dec1.0.weight_bias
+
+
+j!
+getitem
+
+
+ 
+@
+@j
+relu
+
+
+ 
+@
+@j#
+	getitem_3
+
+
+ 
+@
+@j 
+relu_1
+
+
+ 
+@
+@j#
+	getitem_6
+
+
+ 
+@
+@j
+add
+
+
+ 
+@
+@j 
+relu_2
+
+
+ 
+@
+@j#
+	getitem_9
+
+
+@
+ 
+ j 
+relu_3
+
+
+@
+ 
+ j$
+
+getitem_12
+
+
+@
+ 
+ j 
+relu_4
+
+
+@
+ 
+ j$
+
+getitem_15
+
+
+@
+ 
+ j
+add_1
+
+
+@
+ 
+ j 
+relu_5
+
+
+@
+ 
+ j%
+
+getitem_18
+
+
+Ä
+
+j!
+relu_6
+
+
+Ä
+
+j%
+
+getitem_21
+
+
+Ä
+
+j!
+relu_7
+
+
+Ä
+
+j%
+
+getitem_24
+
+
+Ä
+
+j 
+add_2
+
+
+Ä
+
+j!
+relu_8
+
+
+Ä
+
+j%
+
+getitem_27
+
+
+Ä
+
+j!
+relu_9
+
+
+Ä
+
+j%
+
+getitem_30
+
+
+Ä
+
+j"
+relu_10
+
+
+Ä
+
+j%
+
+getitem_33
+
+
+Ä
+
+j 
+add_3
+
+
+Ä
+
+j"
+relu_11
+
+
+Ä
+
+j
+view
+
+
+
+ÄÄj
+linear
+	
+
+Äj
+linear_1
+
+
+
+ÄÄj
+relu_12
+
+
+
+ÄÄj!
+view_2
+
+
+Ä
+
+j%
+
+getitem_36
+
+
+Ä
+
+j"
+relu_13
+
+
+Ä
+
+j
+cat
+
+
+Ä
+
+j%
+
+getitem_39
+
+
+Ä
+
+j"
+relu_14
+
+
+Ä
+
+j%
+
+getitem_42
+
+
+Ä
+
+j"
+relu_15
+
+
+Ä
+
+j%
+
+getitem_45
+
+
+Ä
+
+j 
+add_4
+
+
+Ä
+
+j"
+relu_16
+
+
+Ä
+
+j$
+
+getitem_48
+
+
+@
+ 
+ j!
+relu_17
+
+
+@
+ 
+ j 
+cat_1
+
+
+Ä
+ 
+ j$
+
+getitem_51
+
+
+@
+ 
+ j!
+relu_18
+
+
+@
+ 
+ j$
+
+getitem_54
+
+
+@
+ 
+ j!
+relu_19
+
+
+@
+ 
+ j$
+
+getitem_57
+
+
+@
+ 
+ j
+add_5
+
+
+@
+ 
+ j!
+relu_20
+
+
+@
+ 
+ j$
+
+getitem_60
+
+
+ 
+@
+@j!
+relu_21
+
+
+ 
+@
+@j
+cat_2
+
+
+@
+@
+@j$
+
+getitem_63
+
+
+ 
+@
+@j!
+relu_22
+
+
+ 
+@
+@j$
+
+getitem_66
+
+
+ 
+@
+@j!
+relu_23
+
+
+ 
+@
+@j$
+
+getitem_69
+
+
+ 
+@
+@j
+add_6
+
+
+ 
+@
+@j!
+relu_24
+
+
+ 
+@
+@j&
+
+getitem_72
+
+
+
+Ä
+Äj#
+relu_25
+
+
+
+Ä
+Äj%
+	conv2d_21
+
+
+
+Ä
+ÄÇ∏]
+0pkg.torch.export.ExportedProgram.graph_signatureÉ]
+# inputs
+p_enc1_0_weight: PARAMETER target='enc1.0.weight'
+p_enc1_1_weight: PARAMETER target='enc1.1.weight'
+p_enc1_1_bias: PARAMETER target='enc1.1.bias'
+p_enc1_3_block_0_weight: PARAMETER target='enc1.3.block.0.weight'
+p_enc1_3_block_1_weight: PARAMETER target='enc1.3.block.1.weight'
+p_enc1_3_block_1_bias: PARAMETER target='enc1.3.block.1.bias'
+p_enc1_3_block_3_weight: PARAMETER target='enc1.3.block.3.weight'
+p_enc1_3_block_4_weight: PARAMETER target='enc1.3.block.4.weight'
+p_enc1_3_block_4_bias: PARAMETER target='enc1.3.block.4.bias'
+p_enc2_0_weight: PARAMETER target='enc2.0.weight'
+p_enc2_1_weight: PARAMETER target='enc2.1.weight'
+p_enc2_1_bias: PARAMETER target='enc2.1.bias'
+p_enc2_3_block_0_weight: PARAMETER target='enc2.3.block.0.weight'
+p_enc2_3_block_1_weight: PARAMETER target='enc2.3.block.1.weight'
+p_enc2_3_block_1_bias: PARAMETER target='enc2.3.block.1.bias'
+p_enc2_3_block_3_weight: PARAMETER target='enc2.3.block.3.weight'
+p_enc2_3_block_4_weight: PARAMETER target='enc2.3.block.4.weight'
+p_enc2_3_block_4_bias: PARAMETER target='enc2.3.block.4.bias'
+p_enc3_0_weight: PARAMETER target='enc3.0.weight'
+p_enc3_1_weight: PARAMETER target='enc3.1.weight'
+p_enc3_1_bias: PARAMETER target='enc3.1.bias'
+p_enc3_3_block_0_weight: PARAMETER target='enc3.3.block.0.weight'
+p_enc3_3_block_1_weight: PARAMETER target='enc3.3.block.1.weight'
+p_enc3_3_block_1_bias: PARAMETER target='enc3.3.block.1.bias'
+p_enc3_3_block_3_weight: PARAMETER target='enc3.3.block.3.weight'
+p_enc3_3_block_4_weight: PARAMETER target='enc3.3.block.4.weight'
+p_enc3_3_block_4_bias: PARAMETER target='enc3.3.block.4.bias'
+p_enc4_0_weight: PARAMETER target='enc4.0.weight'
+p_enc4_1_weight: PARAMETER target='enc4.1.weight'
+p_enc4_1_bias: PARAMETER target='enc4.1.bias'
+p_enc4_3_block_0_weight: PARAMETER target='enc4.3.block.0.weight'
+p_enc4_3_block_1_weight: PARAMETER target='enc4.3.block.1.weight'
+p_enc4_3_block_1_bias: PARAMETER target='enc4.3.block.1.bias'
+p_enc4_3_block_3_weight: PARAMETER target='enc4.3.block.3.weight'
+p_enc4_3_block_4_weight: PARAMETER target='enc4.3.block.4.weight'
+p_enc4_3_block_4_bias: PARAMETER target='enc4.3.block.4.bias'
+p_bottleneck_encode_1_weight: PARAMETER target='bottleneck_encode.1.weight'
+p_bottleneck_encode_1_bias: PARAMETER target='bottleneck_encode.1.bias'
+p_bottleneck_decode_0_weight: PARAMETER target='bottleneck_decode.0.weight'
+p_bottleneck_decode_0_bias: PARAMETER target='bottleneck_decode.0.bias'
+p_dec4_0_weight: PARAMETER target='dec4.0.weight'
+p_dec4_1_weight: PARAMETER target='dec4.1.weight'
+p_dec4_1_bias: PARAMETER target='dec4.1.bias'
+p_dec4_fuse_0_weight: PARAMETER target='dec4_fuse.0.weight'
+p_dec4_fuse_1_weight: PARAMETER target='dec4_fuse.1.weight'
+p_dec4_fuse_1_bias: PARAMETER target='dec4_fuse.1.bias'
+p_dec4_fuse_3_block_0_weight: PARAMETER target='dec4_fuse.3.block.0.weight'
+p_dec4_fuse_3_block_1_weight: PARAMETER target='dec4_fuse.3.block.1.weight'
+p_dec4_fuse_3_block_1_bias: PARAMETER target='dec4_fuse.3.block.1.bias'
+p_dec4_fuse_3_block_3_weight: PARAMETER target='dec4_fuse.3.block.3.weight'
+p_dec4_fuse_3_block_4_weight: PARAMETER target='dec4_fuse.3.block.4.weight'
+p_dec4_fuse_3_block_4_bias: PARAMETER target='dec4_fuse.3.block.4.bias'
+p_dec3_0_weight: PARAMETER target='dec3.0.weight'
+p_dec3_1_weight: PARAMETER target='dec3.1.weight'
+p_dec3_1_bias: PARAMETER target='dec3.1.bias'
+p_dec3_fuse_0_weight: PARAMETER target='dec3_fuse.0.weight'
+p_dec3_fuse_1_weight: PARAMETER target='dec3_fuse.1.weight'
+p_dec3_fuse_1_bias: PARAMETER target='dec3_fuse.1.bias'
+p_dec3_fuse_3_block_0_weight: PARAMETER target='dec3_fuse.3.block.0.weight'
+p_dec3_fuse_3_block_1_weight: PARAMETER target='dec3_fuse.3.block.1.weight'
+p_dec3_fuse_3_block_1_bias: PARAMETER target='dec3_fuse.3.block.1.bias'
+p_dec3_fuse_3_block_3_weight: PARAMETER target='dec3_fuse.3.block.3.weight'
+p_dec3_fuse_3_block_4_weight: PARAMETER target='dec3_fuse.3.block.4.weight'
+p_dec3_fuse_3_block_4_bias: PARAMETER target='dec3_fuse.3.block.4.bias'
+p_dec2_0_weight: PARAMETER target='dec2.0.weight'
+p_dec2_1_weight: PARAMETER target='dec2.1.weight'
+p_dec2_1_bias: PARAMETER target='dec2.1.bias'
+p_dec2_fuse_0_weight: PARAMETER target='dec2_fuse.0.weight'
+p_dec2_fuse_1_weight: PARAMETER target='dec2_fuse.1.weight'
+p_dec2_fuse_1_bias: PARAMETER target='dec2_fuse.1.bias'
+p_dec2_fuse_3_block_0_weight: PARAMETER target='dec2_fuse.3.block.0.weight'
+p_dec2_fuse_3_block_1_weight: PARAMETER target='dec2_fuse.3.block.1.weight'
+p_dec2_fuse_3_block_1_bias: PARAMETER target='dec2_fuse.3.block.1.bias'
+p_dec2_fuse_3_block_3_weight: PARAMETER target='dec2_fuse.3.block.3.weight'
+p_dec2_fuse_3_block_4_weight: PARAMETER target='dec2_fuse.3.block.4.weight'
+p_dec2_fuse_3_block_4_bias: PARAMETER target='dec2_fuse.3.block.4.bias'
+p_dec1_0_weight: PARAMETER target='dec1.0.weight'
+p_dec1_1_weight: PARAMETER target='dec1.1.weight'
+p_dec1_1_bias: PARAMETER target='dec1.1.bias'
+p_dec1_3_weight: PARAMETER target='dec1.3.weight'
+p_dec1_3_bias: PARAMETER target='dec1.3.bias'
+b_enc1_1_running_mean: BUFFER target='enc1.1.running_mean' persistent=True
+b_enc1_1_running_var: BUFFER target='enc1.1.running_var' persistent=True
+b_enc1_1_num_batches_tracked: BUFFER target='enc1.1.num_batches_tracked' persistent=True
+b_enc1_3_block_1_running_mean: BUFFER target='enc1.3.block.1.running_mean' persistent=True
+b_enc1_3_block_1_running_var: BUFFER target='enc1.3.block.1.running_var' persistent=True
+b_enc1_3_block_1_num_batches_tracked: BUFFER target='enc1.3.block.1.num_batches_tracked' persistent=True
+b_enc1_3_block_4_running_mean: BUFFER target='enc1.3.block.4.running_mean' persistent=True
+b_enc1_3_block_4_running_var: BUFFER target='enc1.3.block.4.running_var' persistent=True
+b_enc1_3_block_4_num_batches_tracked: BUFFER target='enc1.3.block.4.num_batches_tracked' persistent=True
+b_enc2_1_running_mean: BUFFER target='enc2.1.running_mean' persistent=True
+b_enc2_1_running_var: BUFFER target='enc2.1.running_var' persistent=True
+b_enc2_1_num_batches_tracked: BUFFER target='enc2.1.num_batches_tracked' persistent=True
+b_enc2_3_block_1_running_mean: BUFFER target='enc2.3.block.1.running_mean' persistent=True
+b_enc2_3_block_1_running_var: BUFFER target='enc2.3.block.1.running_var' persistent=True
+b_enc2_3_block_1_num_batches_tracked: BUFFER target='enc2.3.block.1.num_batches_tracked' persistent=True
+b_enc2_3_block_4_running_mean: BUFFER target='enc2.3.block.4.running_mean' persistent=True
+b_enc2_3_block_4_running_var: BUFFER target='enc2.3.block.4.running_var' persistent=True
+b_enc2_3_block_4_num_batches_tracked: BUFFER target='enc2.3.block.4.num_batches_tracked' persistent=True
+b_enc3_1_running_mean: BUFFER target='enc3.1.running_mean' persistent=True
+b_enc3_1_running_var: BUFFER target='enc3.1.running_var' persistent=True
+b_enc3_1_num_batches_tracked: BUFFER target='enc3.1.num_batches_tracked' persistent=True
+b_enc3_3_block_1_running_mean: BUFFER target='enc3.3.block.1.running_mean' persistent=True
+b_enc3_3_block_1_running_var: BUFFER target='enc3.3.block.1.running_var' persistent=True
+b_enc3_3_block_1_num_batches_tracked: BUFFER target='enc3.3.block.1.num_batches_tracked' persistent=True
+b_enc3_3_block_4_running_mean: BUFFER target='enc3.3.block.4.running_mean' persistent=True
+b_enc3_3_block_4_running_var: BUFFER target='enc3.3.block.4.running_var' persistent=True
+b_enc3_3_block_4_num_batches_tracked: BUFFER target='enc3.3.block.4.num_batches_tracked' persistent=True
+b_enc4_1_running_mean: BUFFER target='enc4.1.running_mean' persistent=True
+b_enc4_1_running_var: BUFFER target='enc4.1.running_var' persistent=True
+b_enc4_1_num_batches_tracked: BUFFER target='enc4.1.num_batches_tracked' persistent=True
+b_enc4_3_block_1_running_mean: BUFFER target='enc4.3.block.1.running_mean' persistent=True
+b_enc4_3_block_1_running_var: BUFFER target='enc4.3.block.1.running_var' persistent=True
+b_enc4_3_block_1_num_batches_tracked: BUFFER target='enc4.3.block.1.num_batches_tracked' persistent=True
+b_enc4_3_block_4_running_mean: BUFFER target='enc4.3.block.4.running_mean' persistent=True
+b_enc4_3_block_4_running_var: BUFFER target='enc4.3.block.4.running_var' persistent=True
+b_enc4_3_block_4_num_batches_tracked: BUFFER target='enc4.3.block.4.num_batches_tracked' persistent=True
+b_dec4_1_running_mean: BUFFER target='dec4.1.running_mean' persistent=True
+b_dec4_1_running_var: BUFFER target='dec4.1.running_var' persistent=True
+b_dec4_1_num_batches_tracked: BUFFER target='dec4.1.num_batches_tracked' persistent=True
+b_dec4_fuse_1_running_mean: BUFFER target='dec4_fuse.1.running_mean' persistent=True
+b_dec4_fuse_1_running_var: BUFFER target='dec4_fuse.1.running_var' persistent=True
+b_dec4_fuse_1_num_batches_tracked: BUFFER target='dec4_fuse.1.num_batches_tracked' persistent=True
+b_dec4_fuse_3_block_1_running_mean: BUFFER target='dec4_fuse.3.block.1.running_mean' persistent=True
+b_dec4_fuse_3_block_1_running_var: BUFFER target='dec4_fuse.3.block.1.running_var' persistent=True
+b_dec4_fuse_3_block_1_num_batches_tracked: BUFFER target='dec4_fuse.3.block.1.num_batches_tracked' persistent=True
+b_dec4_fuse_3_block_4_running_mean: BUFFER target='dec4_fuse.3.block.4.running_mean' persistent=True
+b_dec4_fuse_3_block_4_running_var: BUFFER target='dec4_fuse.3.block.4.running_var' persistent=True
+b_dec4_fuse_3_block_4_num_batches_tracked: BUFFER target='dec4_fuse.3.block.4.num_batches_tracked' persistent=True
+b_dec3_1_running_mean: BUFFER target='dec3.1.running_mean' persistent=True
+b_dec3_1_running_var: BUFFER target='dec3.1.running_var' persistent=True
+b_dec3_1_num_batches_tracked: BUFFER target='dec3.1.num_batches_tracked' persistent=True
+b_dec3_fuse_1_running_mean: BUFFER target='dec3_fuse.1.running_mean' persistent=True
+b_dec3_fuse_1_running_var: BUFFER target='dec3_fuse.1.running_var' persistent=True
+b_dec3_fuse_1_num_batches_tracked: BUFFER target='dec3_fuse.1.num_batches_tracked' persistent=True
+b_dec3_fuse_3_block_1_running_mean: BUFFER target='dec3_fuse.3.block.1.running_mean' persistent=True
+b_dec3_fuse_3_block_1_running_var: BUFFER target='dec3_fuse.3.block.1.running_var' persistent=True
+b_dec3_fuse_3_block_1_num_batches_tracked: BUFFER target='dec3_fuse.3.block.1.num_batches_tracked' persistent=True
+b_dec3_fuse_3_block_4_running_mean: BUFFER target='dec3_fuse.3.block.4.running_mean' persistent=True
+b_dec3_fuse_3_block_4_running_var: BUFFER target='dec3_fuse.3.block.4.running_var' persistent=True
+b_dec3_fuse_3_block_4_num_batches_tracked: BUFFER target='dec3_fuse.3.block.4.num_batches_tracked' persistent=True
+b_dec2_1_running_mean: BUFFER target='dec2.1.running_mean' persistent=True
+b_dec2_1_running_var: BUFFER target='dec2.1.running_var' persistent=True
+b_dec2_1_num_batches_tracked: BUFFER target='dec2.1.num_batches_tracked' persistent=True
+b_dec2_fuse_1_running_mean: BUFFER target='dec2_fuse.1.running_mean' persistent=True
+b_dec2_fuse_1_running_var: BUFFER target='dec2_fuse.1.running_var' persistent=True
+b_dec2_fuse_1_num_batches_tracked: BUFFER target='dec2_fuse.1.num_batches_tracked' persistent=True
+b_dec2_fuse_3_block_1_running_mean: BUFFER target='dec2_fuse.3.block.1.running_mean' persistent=True
+b_dec2_fuse_3_block_1_running_var: BUFFER target='dec2_fuse.3.block.1.running_var' persistent=True
+b_dec2_fuse_3_block_1_num_batches_tracked: BUFFER target='dec2_fuse.3.block.1.num_batches_tracked' persistent=True
+b_dec2_fuse_3_block_4_running_mean: BUFFER target='dec2_fuse.3.block.4.running_mean' persistent=True
+b_dec2_fuse_3_block_4_running_var: BUFFER target='dec2_fuse.3.block.4.running_var' persistent=True
+b_dec2_fuse_3_block_4_num_batches_tracked: BUFFER target='dec2_fuse.3.block.4.num_batches_tracked' persistent=True
+b_dec1_1_running_mean: BUFFER target='dec1.1.running_mean' persistent=True
+b_dec1_1_running_var: BUFFER target='dec1.1.running_var' persistent=True
+b_dec1_1_num_batches_tracked: BUFFER target='dec1.1.num_batches_tracked' persistent=True
+x: USER_INPUT
+
+# outputs
+sigmoid: USER_OUTPUT
+Ç8
+2pkg.torch.export.ExportedProgram.range_constraints{}B
+ 
