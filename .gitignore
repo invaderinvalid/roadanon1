@@ -1,0 +1,15 @@
+venv
+detections.csv
+test_pipeline.py
+output_videos
+output
+benchmark/reports
+*__pycache__/
+*.pyc
+*.pyo
+*.pyd
+.Python
+env/
+project.md
+.DS_Store
+models/model.pth
