@@ -50,6 +50,10 @@ class AutoencoderDetector:
             self.input_name = inp.name
             # Detect expected dtype (fp16 models need float16 input)
             self._input_fp16 = (inp.type == "tensor(float16)")
+            # Use model's actual input shape (overrides config if different)
+            model_shape = inp.shape  # e.g. [1, 3, 128, 128]
+            if len(model_shape) == 4 and isinstance(model_shape[-1], int):
+                self.input_size = model_shape[-1]
             print(f"[AE] Loaded {model_path} (input: {self.input_size}x{self.input_size}, "
                   f"{'fp16' if self._input_fp16 else 'fp32'})")
         except Exception as e:
