@@ -13,6 +13,7 @@ Optimized flow (no autoencoder — YOLO-only for RPi real-time):
 import cv2
 import json
 import os
+import gc
 import argparse
 import time
 import numpy as np
@@ -233,6 +234,9 @@ def run(cfg: Config):
     if skip_n > 0:
         print(f"[Pipeline] Frame skip: processing every {skip_n} frame(s)")
 
+    # Disable automatic GC — run it manually to avoid random pauses
+    gc.disable()
+
     try:
         while True:
             frames = camera.read_all()
@@ -307,7 +311,11 @@ def run(cfg: Config):
                                 y1 = max(0, by)
                                 x2 = min(roi.shape[1], bx + bw)
                                 y2 = min(roi.shape[0], by + bh)
-                                crop_img = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
+                                # Only copy crop if save is needed, otherwise None
+                                if x2 > x1 and y2 > y1:
+                                    crop_img = roi[y1:y2, x1:x2].copy()
+                                else:
+                                    crop_img = None
                                 det_candidates.append({
                                     "bbox": (bx, by, bw, bh),
                                     "score": det["confidence"],
@@ -315,6 +323,7 @@ def run(cfg: Config):
                                     "label": det["class_name"],
                                     "confidence": det["confidence"],
                                 })
+                            dets = None  # free YOLO output immediately
 
                 # ── Stage 4: Tracker update ──
                 _t = time.time() if do_profile else 0
@@ -346,6 +355,17 @@ def run(cfg: Config):
                         known_total += 1
                     else:
                         unknown_total += 1
+                    # Free crop image after logging — major memory savings
+                    t.image = None
+                    t.yolo_dets = []
+
+                # Free gone tracks' images
+                for t in gone_tracks:
+                    t.image = None
+                    t.yolo_dets = []
+
+                # Clear references
+                det_candidates = None
 
                 # ── Draw + write video (conditional) ──
                 elapsed = time.time() - t_frame
@@ -362,6 +382,10 @@ def run(cfg: Config):
                     if do_profile:
                         stage_times['draw'] += time.time() - _t
                         stage_counts['draw'] += 1
+
+            # Manual GC every 100 frames instead of random pauses
+            if frame_count % 100 == 0:
+                gc.collect()
 
             if frame_count % 30 == 0:
                 total_tracks = sum(len(tr.tracks) for tr in trackers)
@@ -380,6 +404,7 @@ def run(cfg: Config):
                     break
 
     finally:
+        gc.enable()  # re-enable GC
         camera.release()
         if vid_writer:
             vid_writer.release()
