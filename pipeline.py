@@ -1,14 +1,13 @@
 """Main pipeline: ties all modules together.
 
-Optimized flow:
+Optimized flow (no autoencoder — YOLO-only for RPi real-time):
   1. Read frame → crop to ROI (skip sky/horizon)
-  2. Motion mask on ROI
-  3. Black-out motion → AE on masked ROI
-  4. Error map → extract crops from ORIGINAL ROI
-  5. Feed crops to tracker (IoU matching)
-  6. YOLO runs ONLY on NEW tracks (biggest FPS win)
-  7. Active tracks carry forward labels — no re-classification
-  8. Log + save image once per track lifetime
+  2. Motion detection on ROI
+  3. Motion gate (skip if too little/too much motion)
+  4. Run YOLO directly on ROI
+  5. Feed YOLO detections to tracker (IoU dedup)
+  6. Active tracks carry forward labels — no re-classification
+  7. Log + save image once per track lifetime
 """
 
 import cv2
@@ -22,8 +21,6 @@ from collections import defaultdict
 from config import Config
 from preprocessing import MultiCamera
 from motion_detect import MotionDetector
-from autoencoder import AnomalyDetector
-from cropping import Cropper, Validator
 from tracker import SimpleTracker
 
 
@@ -61,7 +58,7 @@ CLASS_COLORS = {
 }
 
 
-def draw_results(frame, roi_y, active_tracks, mean_error, fps, motion_regions=None):
+def draw_results(frame, roi_y, active_tracks, fps, motion_regions=None):
     display = frame.copy()
     h, w = display.shape[:2]
 
@@ -91,23 +88,14 @@ def draw_results(frame, roi_y, active_tracks, mean_error, fps, motion_regions=No
         if is_known:
             lbl = f"T{t.id} {t.label} {t.confidence:.2f}"
         else:
-            lbl = f"T{t.id} unknown AE:{t.score:.3f}"
+            lbl = f"T{t.id} unknown"
         cv2.putText(display, lbl, (tx, max(fy - 5, 12)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1)
-
-        # YOLO sub-boxes (only for known)
-        for det in t.yolo_dets:
-            bx, by, bw, bh = det["bbox"]
-            bx2, by2 = tx + bx, fy + by
-            dc = CLASS_COLORS.get(det["class_name"], (255, 255, 0))
-            cv2.rectangle(display, (bx2, by2), (bx2 + bw, by2 + bh), dc, 2)
 
     # Status bar
     cv2.putText(display, f"FPS: {fps:.1f}", (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(display, f"AE: {mean_error:.4f}", (10, 50),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 100, 255), 2)
-    cv2.putText(display, f"Tracks: {len(active_tracks)}", (10, 75),
+    cv2.putText(display, f"Tracks: {len(active_tracks)}", (10, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
     return display
 
@@ -187,7 +175,7 @@ class VideoWriterWrapper:
 def run(cfg: Config):
     print("╔══════════════════════════════════════╗")
     print("║   Road Anomaly Detection Pipeline    ║")
-    print("║   (ROI + Tracker optimized)          ║")
+    print("║   (YOLO-only — no autoencoder)       ║")
     print("╚══════════════════════════════════════╝\n")
 
     os.makedirs(cfg.output_dir, exist_ok=True)
@@ -210,9 +198,6 @@ def run(cfg: Config):
                               max_lost=cfg.tracker_max_lost)
                 for _ in cfg.sources]
 
-    ae = AnomalyDetector(cfg)
-    cropper = Cropper(cfg)
-    validator = Validator(cfg)
     yolo = load_classifier(cfg)
     logger = JSONLLogger(log_path)
     vid_writer = VideoWriterWrapper(cfg.output_dir, cfg.proc_width, cfg.proc_height) if cfg.save_video else None
@@ -226,12 +211,13 @@ def run(cfg: Config):
     do_profile = getattr(cfg, 'profile', False)
     stage_times = defaultdict(float)
     stage_counts = defaultdict(int)
-    ae_skipped = 0
+    motion_skipped = 0
 
     print(f"[Pipeline] Log → {log_path}")
     print(f"[Pipeline] Tracker IoU={cfg.tracker_iou} max_lost={cfg.tracker_max_lost}")
     print(f"[Pipeline] Video: {'ON' if cfg.save_video else 'OFF (--no-video)'}")
     print(f"[Pipeline] Motion gate: {motion_min_pct}%-{motion_max_pct}% of ROI")
+    print(f"[Pipeline] Mode: YOLO-only (no autoencoder)")
     if do_profile:
         print(f"[Pipeline] Profiling: ON")
     print("[Pipeline] Running... Press 'q' to quit.\n")
@@ -269,13 +255,12 @@ def run(cfg: Config):
                     continue
 
                 t_frame = time.time()
-                mean_error = 0.0
                 motion_regions = []
 
                 # ── Stage 1: Crop to ROI ──
                 roi = frame[roi_y_start:roi_y_end]
 
-                # ── Stage 2: Motion mask on ROI ──
+                # ── Stage 2: Motion detection on ROI ──
                 _t = time.time() if do_profile else 0
                 mask, motion_regions = motion_dets[idx].detect(roi)
                 if do_profile:
@@ -286,56 +271,38 @@ def run(cfg: Config):
                 det_candidates = []
 
                 if motion_regions:
-                    # ── Motion gate: skip AE for trivial / excessive motion ──
+                    # ── Motion gate: skip YOLO for trivial / excessive motion ──
                     total_motion = sum(a for _, a in motion_regions)
                     motion_pct = (total_motion / roi_area) * 100.0
 
                     if motion_pct < motion_min_pct or motion_pct > motion_max_pct:
-                        ae_skipped += 1
+                        motion_skipped += 1
                     else:
-                        # ── Stage 3: Mask moving objects before AE ──
+                        # ── Stage 3: Run YOLO directly on ROI ──
                         _t = time.time() if do_profile else 0
-                        mask_bool = mask > 0
-                        masked_roi = roi.copy()
-                        masked_roi[mask_bool] = 0
+                        dets = yolo.infer(roi)
+                        yolo_calls += 1
                         if do_profile:
-                            stage_times['mask'] += time.time() - _t
-                            stage_counts['mask'] += 1
+                            stage_times['yolo'] += time.time() - _t
+                            stage_counts['yolo'] += 1
 
-                        # ── Stage 4: AE on masked ROI ──
-                        _t = time.time() if do_profile else 0
-                        error_map, mean_error = ae.infer(masked_roi)
-                        error_map[mask_bool] = 0.0
-                        unmasked = ~mask_bool
-                        if unmasked.any():
-                            mean_error = float(error_map[unmasked].mean())
-                        else:
-                            mean_error = 0.0
-                        if do_profile:
-                            stage_times['ae'] += time.time() - _t
-                            stage_counts['ae'] += 1
+                        for det in dets:
+                            bx, by, bw, bh = det["bbox"]
+                            # Crop the detected region from ROI for the track image
+                            x1 = max(0, bx)
+                            y1 = max(0, by)
+                            x2 = min(roi.shape[1], bx + bw)
+                            y2 = min(roi.shape[0], by + bh)
+                            crop_img = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
+                            det_candidates.append({
+                                "bbox": (bx, by, bw, bh),
+                                "score": det["confidence"],
+                                "image": crop_img,
+                                "label": det["class_name"],
+                                "confidence": det["confidence"],
+                            })
 
-                        if mean_error > cfg.ae_threshold:
-                            # ── Stage 5: Crop from ORIGINAL ROI ──
-                            _t = time.time() if do_profile else 0
-                            crops = cropper.extract(roi, error_map, cfg.ae_threshold)
-
-                            crop_count = 0
-                            for crop in crops:
-                                if crop_count >= cfg.max_crops:
-                                    break
-                                if validator.is_valid(crop["image"]):
-                                    det_candidates.append({
-                                        "bbox": crop["bbox"],
-                                        "score": crop["score"],
-                                        "image": crop["image"],
-                                    })
-                                    crop_count += 1
-                            if do_profile:
-                                stage_times['crop'] += time.time() - _t
-                                stage_counts['crop'] += 1
-
-                # ── Stage 6: Tracker update ──
+                # ── Stage 4: Tracker update ──
                 _t = time.time() if do_profile else 0
                 tracker = trackers[idx]
                 new_tracks, active_tracks, gone_tracks = tracker.update(
@@ -344,21 +311,21 @@ def run(cfg: Config):
                     stage_times['tracker'] += time.time() - _t
                     stage_counts['tracker'] += 1
 
-                # ── Stage 7: YOLO only on NEW tracks ──
+                # ── Stage 5: Assign YOLO labels to new tracks directly ──
                 for t in new_tracks:
-                    if t.image is not None and validator.is_valid(t.image):
-                        _t = time.time() if do_profile else 0
-                        dets = yolo.infer(t.image)
-                        if do_profile:
-                            stage_times['yolo'] += time.time() - _t
-                            stage_counts['yolo'] += 1
-                        yolo_calls += 1
-                        t.yolo_dets = dets
-                        if dets:
-                            t.label = dets[0]["class_name"]
-                            t.confidence = dets[0]["confidence"]
+                    # Find the matching detection candidate to get the label
+                    for det_c in det_candidates:
+                        if det_c["bbox"] == t.bbox:
+                            t.label = det_c.get("label")
+                            t.confidence = det_c.get("confidence", 0.0)
+                            t.yolo_dets = [{
+                                "bbox": det_c["bbox"],
+                                "class_name": det_c.get("label", "unknown"),
+                                "confidence": det_c.get("confidence", 0.0),
+                            }]
+                            break
 
-                    # ── Stage 8: Log (once per track, no image saving) ──
+                    # ── Stage 6: Log (once per track) ──
                     t.logged = True
                     event = logger.log_track(t, idx)
                     if t.label:
@@ -373,7 +340,7 @@ def run(cfg: Config):
                 if cfg.save_video or cfg.show_preview:
                     _t = time.time() if do_profile else 0
                     display = draw_results(frame, roi_y_start, active_tracks,
-                                           mean_error, fps, motion_regions)
+                                           fps, motion_regions)
                     if vid_writer:
                         vid_writer.write(idx, display)
                     if cfg.show_preview:
@@ -417,12 +384,12 @@ def run(cfg: Config):
     print(f"  Time:              {elapsed_total:.1f}s")
     print(f"  ROI:               {cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}% "
           f"({roi_h}px)")
-    print(f"  AE skipped (gate): {ae_skipped}")
+    print(f"  Motion skipped:    {motion_skipped}")
     print(f"{'='*55}")
 
     if do_profile and stage_counts:
         print(f"\n  Per-stage timing (avg ms):")
-        for s in ['motion', 'mask', 'ae', 'crop', 'tracker', 'yolo', 'draw']:
+        for s in ['motion', 'yolo', 'tracker', 'draw']:
             if stage_counts.get(s, 0) > 0:
                 avg = stage_times[s] / stage_counts[s] * 1000
                 print(f"    {s:10s}: {avg:7.1f} ms  ({stage_counts[s]} calls)")
@@ -435,12 +402,9 @@ def main():
                         help="Video sources (camera indices or file paths)")
     parser.add_argument("--no-preview", action="store_true")
     parser.add_argument("--headless", action="store_true", help="Alias for --no-preview")
-    parser.add_argument("--ae-threshold", type=float, default=None)
     parser.add_argument("--yolo-conf", type=float, default=None)
     parser.add_argument("--backend", choices=["ncnn", "torch", "tflite"], default=None,
                         help="YOLO classifier backend")
-    parser.add_argument("--ae-backend", choices=["torch", "onnx"], default=None,
-                        help="Autoencoder backend (onnx for RPi 4B)")
     parser.add_argument("--output", "-o", default=None, help="Output directory")
     parser.add_argument("--skip-frames", type=int, default=None,
                         help="Process every Nth frame (0=all)")
@@ -469,14 +433,10 @@ def main():
         cfg.sources = [int(s) if s.isdigit() else s for s in args.sources]
     if args.no_preview or args.headless:
         cfg.show_preview = False
-    if args.ae_threshold is not None:
-        cfg.ae_threshold = args.ae_threshold
     if args.yolo_conf is not None:
         cfg.yolo_conf = args.yolo_conf
     if args.backend:
         cfg.classifier_backend = args.backend
-    if args.ae_backend:
-        cfg.ae_backend = args.ae_backend
     if args.output:
         cfg.output_dir = args.output
     if args.skip_frames is not None:
