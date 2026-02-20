@@ -140,7 +140,8 @@ class YOLOClassifier:
     # ── Async API ──────────────────────────────────────────────
 
     def _worker(self):
-        """Background thread: pick up frames, run inference, store results."""
+        """Background thread: always processes the LATEST submitted frame."""
+        import time as _time
         while not self._stop:
             frame = None
             with self._lock:
@@ -148,37 +149,40 @@ class YOLOClassifier:
                     frame = self._request_frame
                     self._request_frame = None
                     self._busy = True
+                    self._frame_id_processing = self._frame_id_submitted
 
             if frame is not None:
                 result = self._run_inference(frame)
                 with self._lock:
-                    self._result = result
+                    # Only keep result if no newer frame was submitted while busy
+                    if self._frame_id_processing == self._frame_id_submitted:
+                        self._result = result
+                    else:
+                        self._result = None  # stale — newer frame pending
                     self._busy = False
             else:
-                # No work — tiny sleep to avoid busy-wait
-                import time
-                time.sleep(0.001)
+                _time.sleep(0.001)
 
     def start_async(self):
         """Start the background YOLO thread."""
         self._stop = False
+        self._frame_id_submitted = 0
+        self._frame_id_processing = 0
         self._thread = Thread(target=self._worker, daemon=True)
         self._thread.start()
         print("[YOLO] Async thread started")
 
     def stop_async(self):
-        """Stop the background thread."""
         self._stop = True
         if self._thread:
             self._thread.join(timeout=2)
 
     def submit(self, frame):
-        """Submit a frame for async inference (non-blocking).
-        Returns True if accepted, False if still busy with previous frame."""
+        """Submit a frame — ALWAYS accepts, overwrites any pending frame.
+        No queue, no overflow. Latest frame always wins."""
         with self._lock:
-            if self._busy:
-                return False  # drop frame — still processing previous
             self._request_frame = frame.copy()
+            self._frame_id_submitted += 1
             return True
 
     def fetch(self):

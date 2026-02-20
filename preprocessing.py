@@ -116,13 +116,16 @@ class ThreadedFileSource:
         return self._cap.get(cv2.CAP_PROP_FPS)
 
     def read(self):
-        with self._lock:
-            if self._buffer:
-                return self._buffer.popleft()
-        if self._exhausted:
-            return None
-        # Buffer empty but not exhausted — return None (will retry next call)
-        return None
+        import time
+        # Wait briefly if buffer empty but source still has frames
+        for _ in range(200):  # max ~200ms wait
+            with self._lock:
+                if self._buffer:
+                    return self._buffer.popleft()
+            if self._exhausted:
+                return None
+            time.sleep(0.001)
+        return None  # timeout
 
     def release(self):
         self._stopped = True

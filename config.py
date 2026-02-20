@@ -6,7 +6,7 @@ from typing import List
 
 @dataclass
 class Config:
-    # Input sources (camera indices or video file paths)
+    # Input sources
     sources: List = field(default_factory=lambda: [0, 1])
 
     # Preprocessing
@@ -25,20 +25,25 @@ class Config:
     yolo_nms: float = 0.45
     yolo_input_size: int = 640
 
+    # Autoencoder — ONNX FP16
+    ae_model_path: str = "models/autoencoder_fp16.onnx"
+    ae_threshold: float = 0.05
+    ae_enabled: bool = False
+    ae_input_size: int = 128         # 64 for RPi speed, 128 for accuracy
+    ae_smooth_window: int = 5        # rolling window size
+    ae_smooth_min_hits: int = 2      # require 2/5 frames anomalous
+    ae_recheck_interval: int = 15    # re-check tracked regions every N frames
+
     # Performance
-    skip_frames: int = 0        # 0 = process every frame, N = process every Nth
-    realtime: bool = False      # throttle display to source FPS
-    profile: bool = False       # print per-stage timing
+    skip_frames: int = 0
+    realtime: bool = False
+    profile: bool = False
 
-    # Motion gate
-    motion_min_pct: float = 0.5     # skip if motion < 0.5% of ROI (noise)
-    motion_max_pct: float = 60.0    # skip if motion > 60% of ROI (shake)
-
-    # ROI — restrict processing to road area
-    roi_top: float = 0.4       # skip top 40% (sky/horizon)
+    # ROI — bottom half of frame (perspective-stable road area)
+    roi_top: float = 0.5            # skip top 50% — sky, buildings, horizon
     roi_bottom: float = 1.0
 
-    # Tracker — dedup same anomaly across frames
+    # Tracker
     tracker_iou: float = 0.25
     tracker_max_lost: int = 10
 
@@ -53,14 +58,20 @@ class Config:
         cfg = Config()
         cfg.proc_width = 320
         cfg.proc_height = 240
-        cfg.motion_history = 200       # stable BG model without being slow
-        cfg.min_contour_area = 200.0   # catch smaller anomalies at 320px
-        cfg.yolo_conf = 0.25           # don't filter too aggressively
+        cfg.motion_history = 200
+        cfg.min_contour_area = 200.0
+        cfg.yolo_conf = 0.25
         cfg.yolo_input_size = 640
-        cfg.skip_frames = 2            # process every 2nd frame (not 4th)
-        cfg.roi_top = 0.35
+        cfg.ae_enabled = True
+        cfg.ae_threshold = 0.06
+        cfg.ae_input_size = 64          # 64x64 → <10ms vs 40ms at 128x128
+        cfg.ae_smooth_window = 5
+        cfg.ae_smooth_min_hits = 2
+        cfg.ae_recheck_interval = 15
+        cfg.skip_frames = 2
+        cfg.roi_top = 0.5              # bottom half — stable road perspective
         cfg.show_preview = False
         cfg.save_video = False
-        cfg.tracker_iou = 0.25         # stricter matching = fewer merged tracks
+        cfg.tracker_iou = 0.25
         cfg.tracker_max_lost = 15
         return cfg
