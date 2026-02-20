@@ -46,8 +46,12 @@ class AutoencoderDetector:
             opts.graph_optimization_level = ort.GraphOptimizationLevel.ORT_ENABLE_ALL
             self.session = ort.InferenceSession(
                 model_path, opts, providers=["CPUExecutionProvider"])
-            self.input_name = self.session.get_inputs()[0].name
-            print(f"[AE] Loaded {model_path} (input: {self.input_size}x{self.input_size})")
+            inp = self.session.get_inputs()[0]
+            self.input_name = inp.name
+            # Detect expected dtype (fp16 models need float16 input)
+            self._input_fp16 = (inp.type == "tensor(float16)")
+            print(f"[AE] Loaded {model_path} (input: {self.input_size}x{self.input_size}, "
+                  f"{'fp16' if self._input_fp16 else 'fp32'})")
         except Exception as e:
             self.session = None
             print(f"[AE] WARNING: {e}")
@@ -67,8 +71,15 @@ class AutoencoderDetector:
         resized = cv2.resize(frame, (self.input_size, self.input_size))
         blob = resized.astype(np.float32).transpose(2, 0, 1)[np.newaxis] / 255.0
 
+        # Cast to model's expected dtype
+        if self._input_fp16:
+            blob = blob.astype(np.float16)
+
         output = self.session.run(None, {self.input_name: blob})[0]
-        error = np.abs(blob - output).mean(axis=1).squeeze(0)
+        # Compute error in float32 for stability
+        blob_f32 = blob.astype(np.float32) if self._input_fp16 else blob
+        out_f32 = output.astype(np.float32) if output.dtype != np.float32 else output
+        error = np.abs(blob_f32 - out_f32).mean(axis=1).squeeze(0)
         mean_error = float(error.mean())
         error_map = cv2.resize(error, (w, h))
 

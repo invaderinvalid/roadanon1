@@ -1,25 +1,26 @@
-"""Road Anomaly Detection — GUI (OpenCV-based).
+"""Road Anomaly Detection — Tkinter GUI.
 
 Two modes:
-  [1] Pi Camera / USB webcam (live)
-  [2] Video file playback
+  1. Pi Camera / USB webcam (live)
+  2. Video file playback
 
 Shows live video with detections, AE/YOLO status, and anomaly alerts.
 Uses pipeline modules directly — no pipeline.py modification.
 
-Controls:
-  q / ESC  — quit
-  SPACE    — pause/resume
-  r        — reset tracker
+Requirements:
+  brew install python-tk@3.14   (for macOS homebrew Python)
+  pip install Pillow
 """
 
+import tkinter as tk
+from tkinter import ttk, filedialog, messagebox
 import cv2
 import numpy as np
 import time
 import os
-import sys
-import glob
+import threading
 from datetime import datetime
+from PIL import Image, ImageTk
 from collections import deque
 
 from config import Config
@@ -28,417 +29,574 @@ from tracker import SimpleTracker, _iou
 
 
 # ═══════════════════════════════════════════════════════════════
-# HUD Drawing Helpers
+# Detection Engine (runs in background thread)
 # ═══════════════════════════════════════════════════════════════
 
-def draw_rounded_rect(img, pt1, pt2, color, radius=8, thickness=-1, alpha=0.7):
-    """Draw a semi-transparent rounded rectangle."""
-    overlay = img.copy()
-    x1, y1 = pt1
-    x2, y2 = pt2
-    cv2.rectangle(overlay, (x1 + radius, y1), (x2 - radius, y2), color, thickness)
-    cv2.rectangle(overlay, (x1, y1 + radius), (x2, y2 - radius), color, thickness)
-    cv2.circle(overlay, (x1 + radius, y1 + radius), radius, color, thickness)
-    cv2.circle(overlay, (x2 - radius, y1 + radius), radius, color, thickness)
-    cv2.circle(overlay, (x1 + radius, y2 - radius), radius, color, thickness)
-    cv2.circle(overlay, (x2 - radius, y2 - radius), radius, color, thickness)
-    cv2.addWeighted(overlay, alpha, img, 1 - alpha, 0, img)
-
-
-def draw_bar(img, x, y, w, h, value, max_val, color, bg=(40, 40, 40), thresh=None):
-    """Draw a horizontal bar with optional threshold marker."""
-    cv2.rectangle(img, (x, y), (x + w, y + h), bg, -1)
-    fill = int(min(value / max(max_val, 0.001), 1.0) * w)
-    cv2.rectangle(img, (x, y), (x + fill, y + h), color, -1)
-    if thresh is not None:
-        tx = x + int(min(thresh / max(max_val, 0.001), 1.0) * w)
-        cv2.line(img, (tx, y - 2), (tx, y + h + 2), (255, 255, 255), 1)
-
-
-def put_text(img, text, pos, scale=0.4, color=(220, 220, 220), thick=1):
-    cv2.putText(img, text, pos, cv2.FONT_HERSHEY_SIMPLEX, scale, color, thick,
-                cv2.LINE_AA)
-
-
-CLASS_COLORS = {
-    "road_damage": (60, 60, 255),
+CLASS_COLORS_BGR = {
+    "road_damage": (0, 0, 255),
     "speed_bump": (0, 165, 255),
     "unsurfaced_road": (220, 220, 0),
 }
 
 
-# ═══════════════════════════════════════════════════════════════
-# Main GUI
-# ═══════════════════════════════════════════════════════════════
+class DetectionEngine:
+    """Runs detection using pipeline modules in a background thread."""
 
-def select_mode():
-    """Terminal-based mode selection."""
-    print("\n╔══════════════════════════════════════╗")
-    print("║   Road Anomaly Detection — GUI       ║")
-    print("╚══════════════════════════════════════╝\n")
-    print("  Select mode:")
-    print("    [1] Pi Camera / USB Webcam")
-    print("    [2] Video file")
-    print("    [3] All videos in test_video/")
-    print()
+    def __init__(self):
+        self._running = False
+        self._thread = None
+        self._frame_queue = deque(maxlen=2)
+        self._stats = {}
+        self._alerts = deque(maxlen=50)
+        self._lock = threading.Lock()
 
-    choice = input("  Mode (1/2/3): ").strip()
+    @property
+    def running(self):
+        return self._running
 
-    if choice == "1":
-        cam_id = input("  Camera ID [0]: ").strip() or "0"
-        return int(cam_id), "camera"
-    elif choice == "2":
-        path = input("  Video path: ").strip()
-        if not os.path.exists(path):
-            print(f"  ERROR: {path} not found")
-            sys.exit(1)
-        return path, "video"
-    elif choice == "3":
-        videos = sorted(glob.glob("test_video/*.mp4"))
-        if not videos:
-            print("  ERROR: No .mp4 files in test_video/")
-            sys.exit(1)
-        print(f"  Found {len(videos)} videos")
-        return videos, "batch"
-    else:
-        print("  Invalid choice")
-        sys.exit(1)
+    def get_frame(self):
+        with self._lock:
+            return self._frame_queue.popleft() if self._frame_queue else None
 
+    def get_stats(self):
+        with self._lock:
+            return self._stats.copy()
 
-def run_gui(source, mode="video"):
-    """Run detection with OpenCV GUI overlay."""
+    def get_new_alerts(self):
+        with self._lock:
+            alerts = list(self._alerts)
+            self._alerts.clear()
+            return alerts
 
-    cfg = Config()
-    cfg.show_preview = False
-    cfg.save_video = False
-    cfg.motion_history = 200
-    cfg.min_contour_area = 300
-    cfg.yolo_conf = 0.25
-    cfg.roi_top = 0.5
-    cfg.ae_enabled = True
-    cfg.ae_input_size = 64
-    cfg.ae_threshold = 0.06
-    cfg.ae_smooth_window = 5
-    cfg.ae_smooth_min_hits = 2
-    cfg.ae_recheck_interval = 15
-    cfg.skip_frames = 0
-    cfg.tracker_iou = 0.25
-    cfg.tracker_max_lost = 15
+    def start(self, source, mode="video"):
+        if self._running:
+            self.stop()
+        self._running = True
+        self._thread = threading.Thread(target=self._run, args=(source, mode), daemon=True)
+        self._thread.start()
 
-    if mode == "camera":
-        cfg.proc_width = 320
-        cfg.proc_height = 240
-    else:
-        cfg.proc_width = 640
-        cfg.proc_height = 480
+    def stop(self):
+        self._running = False
+        if self._thread:
+            self._thread.join(timeout=3)
+            self._thread = None
 
-    # Open source
-    cap = cv2.VideoCapture(source)
-    if not cap.isOpened():
-        print(f"  ERROR: Cannot open {source}")
-        return
+    def _run(self, source, mode):
+        cfg = Config()
+        cfg.show_preview = False
+        cfg.save_video = False
+        cfg.roi_top = 0.5
+        cfg.ae_enabled = True
+        cfg.ae_input_size = 64
+        cfg.ae_threshold = 0.06
+        cfg.ae_smooth_window = 5
+        cfg.ae_smooth_min_hits = 2
+        cfg.ae_recheck_interval = 15
+        cfg.tracker_iou = 0.25
+        cfg.tracker_max_lost = 15
+        cfg.yolo_conf = 0.25
 
-    src_fps = cap.get(cv2.CAP_PROP_FPS) or 30
-    total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if mode != "camera" else 0
-    src_name = os.path.basename(str(source)) if isinstance(source, str) else f"Camera {source}"
+        if mode == "camera":
+            cfg.proc_width = 320
+            cfg.proc_height = 240
+            source = int(source) if str(source).isdigit() else 0
+        else:
+            cfg.proc_width = 640
+            cfg.proc_height = 480
 
-    # Init modules
-    from classifier_ncnn import YOLOClassifier
-    cfg.sources = [source]
-    yolo = YOLOClassifier(cfg)
-    yolo.start_async()
+        cfg.sources = [source]
 
-    ae = None
-    if cfg.ae_enabled:
-        try:
-            from autoencoder_tflite import AutoencoderDetector
-            ae = AutoencoderDetector(cfg)
-            if ae.session is None:
+        cap = cv2.VideoCapture(source)
+        if not cap.isOpened():
+            with self._lock:
+                self._alerts.append(("ERROR", "Cannot open source", "#ff0000"))
+            self._running = False
+            return
+
+        src_fps = cap.get(cv2.CAP_PROP_FPS) or 30
+        total_frames = int(cap.get(cv2.CAP_PROP_FRAME_COUNT)) if mode != "camera" else 0
+
+        # Init modules
+        from classifier_ncnn import YOLOClassifier
+        yolo = YOLOClassifier(cfg)
+        yolo.start_async()
+
+        ae = None
+        if cfg.ae_enabled:
+            try:
+                from autoencoder_tflite import AutoencoderDetector
+                ae = AutoencoderDetector(cfg)
+                if ae.session is None:
+                    ae = None
+            except Exception:
                 ae = None
-        except Exception:
-            ae = None
 
-    motion_det = MotionDetector(cfg)
-    tracker = SimpleTracker(iou_thresh=cfg.tracker_iou, max_lost=cfg.tracker_max_lost)
+        motion_det = MotionDetector(cfg)
+        tracker = SimpleTracker(iou_thresh=cfg.tracker_iou, max_lost=cfg.tracker_max_lost)
 
-    roi_y_start = int(cfg.proc_height * cfg.roi_top)
-    roi_y_end = int(cfg.proc_height * cfg.roi_bottom)
-    roi_h = roi_y_end - roi_y_start
-    roi_area = max(roi_h * cfg.proc_width, 1)
+        roi_y_start = int(cfg.proc_height * cfg.roi_top)
+        roi_y_end = int(cfg.proc_height * cfg.roi_bottom)
+        roi_h = roi_y_end - roi_y_start
+        roi_area = max(roi_h * cfg.proc_width, 1)
 
-    # State
-    frame_count = 0
-    yolo_calls = 0
-    fps = 0.0
-    load_avg_ms = 0.0
-    last_ae_error = None
-    yolo_cooldown = 0
-    paused = False
+        frame_count = 0
+        yolo_calls = 0
+        fps = 0.0
+        load_avg_ms = 0.0
+        last_ae_error = None
+        yolo_cooldown = 0
+        ae_says_anomaly = False
+        motion_pct = 0.0
 
-    # Alert log (last 6 alerts)
-    alerts = deque(maxlen=6)
+        try:
+            while self._running:
+                ret, raw_frame = cap.read()
+                if not ret:
+                    with self._lock:
+                        self._alerts.append(("INFO", "Video ended", "#888888"))
+                    break
 
-    # Display window
-    win_name = "Road Anomaly Detection"
-    cv2.namedWindow(win_name, cv2.WINDOW_NORMAL)
-    cv2.resizeWindow(win_name, 960, 600)
+                frame_count += 1
+                t0 = time.time()
 
-    print(f"\n  Playing: {src_name}")
-    print(f"  Controls: [q]uit  [SPACE]pause  [r]eset tracker\n")
+                frame = cv2.resize(raw_frame, (cfg.proc_width, cfg.proc_height))
+                roi = frame[roi_y_start:roi_y_end]
 
-    while True:
-        if not paused:
-            ret, raw_frame = cap.read()
-            if not ret:
-                break
+                # Motion
+                mask, motion_regions = motion_det.detect(roi)
+                motion_pct = 0.0
+                if motion_regions:
+                    total_m = sum(a for _, a in motion_regions)
+                    motion_pct = (total_m / roi_area) * 100.0
 
-            frame_count += 1
-            t0 = time.time()
+                # Motion weight
+                if motion_pct < 0.1:
+                    mw = 3.0
+                elif motion_pct < 2.0:
+                    mw = 1.5
+                elif motion_pct > 50.0:
+                    mw = 1.8
+                elif motion_pct > 30.0:
+                    mw = 1.3
+                else:
+                    mw = 1.0
 
-            frame = cv2.resize(raw_frame, (cfg.proc_width, cfg.proc_height))
-            roi = frame[roi_y_start:roi_y_end]
+                # Tracker check
+                all_tracked = True
+                if motion_regions:
+                    for (mx, my, mw2, mh), _ in motion_regions:
+                        if not any(_iou((mx, my, mw2, mh), tb) > 0.3
+                                   for tb in tracker.active_bboxes):
+                            all_tracked = False
+                            break
 
-            # ── Motion ──
-            mask, motion_regions = motion_det.detect(roi)
-            motion_pct = 0.0
-            if motion_regions:
-                total_m = sum(a for _, a in motion_regions)
-                motion_pct = (total_m / roi_area) * 100.0
+                # AE
+                ae_says_anomaly = False
+                if ae and motion_regions:
+                    run_ae = not all_tracked or (frame_count % cfg.ae_recheck_interval == 0)
+                    if run_ae:
+                        eff_thresh = cfg.ae_threshold * mw
+                        ae_says_anomaly, ae_err, _ = ae.is_anomaly_smoothed(roi, eff_thresh)
+                        last_ae_error = ae_err
 
-            if motion_pct < 0.1:
-                mw = 3.0
-            elif motion_pct < 2.0:
-                mw = 1.5
-            elif motion_pct > 50.0:
-                mw = 1.8
-            elif motion_pct > 30.0:
-                mw = 1.3
-            else:
-                mw = 1.0
+                # YOLO fetch
+                yolo_result = yolo.fetch()
+                det_candidates = []
+                if yolo_result:
+                    for det in yolo_result:
+                        bx, by, bw, bh = det["bbox"]
+                        det_candidates.append({
+                            "bbox": (bx, by, bw, bh),
+                            "score": det["confidence"],
+                            "image": None,
+                            "label": det["class_name"],
+                            "confidence": det["confidence"],
+                        })
 
-            # ── Tracker check ──
-            all_tracked = True
-            if motion_regions:
-                for (mx, my, mw2, mh), _ in motion_regions:
-                    if not any(_iou((mx, my, mw2, mh), tb) > 0.3
-                               for tb in tracker.active_bboxes):
-                        all_tracked = False
-                        break
-
-            # ── AE ──
-            ae_says_anomaly = False
-            run_ae = False
-            if ae and motion_regions:
-                run_ae = not all_tracked or (frame_count % cfg.ae_recheck_interval == 0)
-                if run_ae:
-                    eff_thresh = cfg.ae_threshold * mw
-                    ae_says_anomaly, ae_err, _ = ae.is_anomaly_smoothed(roi, eff_thresh)
-                    last_ae_error = ae_err
-
-            # ── YOLO fetch ──
-            yolo_result = yolo.fetch()
-            det_candidates = []
-            if yolo_result:
-                for det in yolo_result:
-                    bx, by, bw, bh = det["bbox"]
-                    det_candidates.append({
-                        "bbox": (bx, by, bw, bh),
-                        "score": det["confidence"],
-                        "image": None,
-                        "label": det["class_name"],
-                        "confidence": det["confidence"],
-                    })
-
-            # ── YOLO submit ──
-            submit = False
-            if not all_tracked:
-                submit = ae_says_anomaly if ae else bool(motion_regions)
-            elif ae_says_anomaly and frame_count % cfg.ae_recheck_interval == 0:
-                submit = True
-            if yolo_cooldown > 0:
-                yolo_cooldown -= 1
+                # YOLO submit
                 submit = False
-            if submit:
-                yolo.submit(roi)
-                yolo_calls += 1
-                yolo_cooldown = 5
+                if not all_tracked:
+                    submit = ae_says_anomaly if ae else bool(motion_regions)
+                elif ae_says_anomaly and frame_count % cfg.ae_recheck_interval == 0:
+                    submit = True
+                if yolo_cooldown > 0:
+                    yolo_cooldown -= 1
+                    submit = False
+                if submit:
+                    yolo.submit(roi)
+                    yolo_calls += 1
+                    yolo_cooldown = 5
 
-            # ── Tracker ──
-            new_tracks, active_tracks, gone_tracks = tracker.update(
-                det_candidates, frame_count)
-            for t in new_tracks:
-                for dc in det_candidates:
-                    if dc["bbox"] == t.bbox:
-                        t.label = dc["label"]
-                        t.confidence = dc["confidence"]
-                        break
+                # Tracker
+                new_tracks, active_tracks, gone_tracks = tracker.update(
+                    det_candidates, frame_count)
+                for t in new_tracks:
+                    for dc in det_candidates:
+                        if dc["bbox"] == t.bbox:
+                            t.label = dc["label"]
+                            t.confidence = dc["confidence"]
+                            break
 
-            elapsed = time.time() - t0
-            elapsed_ms = elapsed * 1000
-            fps = 0.9 * fps + 0.1 * (1.0 / max(elapsed, 0.001))
-            load_avg_ms = 0.9 * load_avg_ms + 0.1 * elapsed_ms
+                # Timing
+                elapsed = time.time() - t0
+                fps = 0.9 * fps + 0.1 * (1.0 / max(elapsed, 0.001))
+                load_avg_ms = 0.9 * load_avg_ms + 0.1 * (elapsed * 1000)
 
-            # ── Generate alerts ──
-            for t in new_tracks:
-                if t.label:
-                    ts = datetime.now().strftime("%H:%M:%S")
-                    alerts.append((ts, t.label, t.confidence, t.id))
+                # Draw on frame
+                display = frame.copy()
+                # ROI line
+                cv2.line(display, (0, roi_y_start), (cfg.proc_width, roi_y_start),
+                         (0, 255, 255), 1)
+                # Motion boxes
+                if motion_regions:
+                    for (mx, my, mw2, mh), _ in motion_regions:
+                        cv2.rectangle(display,
+                                      (mx, roi_y_start + my),
+                                      (mx + mw2, roi_y_start + my + mh),
+                                      (0, 180, 0), 1)
+                # Track boxes
+                for t in active_tracks:
+                    tx, ty, tw, th = t.bbox
+                    fy = roi_y_start + ty
+                    color = CLASS_COLORS_BGR.get(t.label, (0, 255, 255))
+                    cv2.rectangle(display, (tx, fy), (tx + tw, fy + th), color, 2)
+                    if t.label:
+                        lbl = f"{t.label} {t.confidence:.0%}"
+                        cv2.putText(display, lbl, (tx, max(fy - 6, 14)),
+                                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1,
+                                    cv2.LINE_AA)
 
-        # ═══════════════════════════════════════════════════════
-        # DRAW
-        # ═══════════════════════════════════════════════════════
-        display = frame.copy()
-        h, w = display.shape[:2]
+                # Convert BGR → RGB
+                frame_rgb = cv2.cvtColor(display, cv2.COLOR_BGR2RGB)
+                with self._lock:
+                    self._frame_queue.append(frame_rgb)
 
-        # Upscale for better readability
-        scale = 2 if w < 400 else 1
-        if scale > 1:
-            display = cv2.resize(display, (w * scale, h * scale),
-                                 interpolation=cv2.INTER_NEAREST)
-        dh, dw = display.shape[:2]
-        ry = roi_y_start * scale
+                # Alerts for new tracks
+                for t in new_tracks:
+                    if t.label:
+                        with self._lock:
+                            self._alerts.append((
+                                t.label,
+                                f"{t.label} ({t.confidence:.0%}) — Track #{t.id}",
+                                {"road_damage": "#ff3c3c", "speed_bump": "#ffa500",
+                                 "unsurfaced_road": "#00dcdc"}.get(t.label, "#ffff00")
+                            ))
 
-        # ROI line
-        for x0 in range(0, dw, 16):
-            cv2.line(display, (x0, ry), (min(x0 + 8, dw), ry), (0, 255, 255), 1)
+                # Stats
+                with self._lock:
+                    self._stats = {
+                        "fps": fps,
+                        "frame": frame_count,
+                        "total_frames": total_frames,
+                        "motion_pct": motion_pct,
+                        "ae_error": last_ae_error,
+                        "ae_threshold": cfg.ae_threshold * mw if ae else None,
+                        "yolo_busy": yolo.is_busy,
+                        "yolo_calls": yolo_calls,
+                        "yolo_cooldown": yolo_cooldown,
+                        "tracks": len(active_tracks),
+                        "latency_ms": load_avg_ms,
+                        "anomaly": ae_says_anomaly,
+                        "ae_on": ae is not None,
+                    }
 
-        # Motion boxes
-        if motion_regions:
-            for (mx, my, mw2, mh), _ in motion_regions:
-                cv2.rectangle(display,
-                              (mx * scale, ry + my * scale),
-                              ((mx + mw2) * scale, ry + (my + mh) * scale),
-                              (0, 180, 0), 1)
+                # Throttle for video files
+                target_delay = 1.0 / src_fps - elapsed
+                if target_delay > 0 and isinstance(source, str):
+                    time.sleep(target_delay * 0.8)
 
-        # Track boxes
-        for t in active_tracks:
-            tx, ty, tw, th = t.bbox
-            fy = ry + ty * scale
-            color = CLASS_COLORS.get(t.label, (0, 255, 255))
-            cv2.rectangle(display,
-                          (tx * scale, fy), ((tx + tw) * scale, fy + th * scale),
-                          color, 2)
-            if t.label:
-                lbl = f"{t.label} {t.confidence:.0%}"
+        finally:
+            yolo.stop_async()
+            cap.release()
+            self._running = False
+
+
+# ═══════════════════════════════════════════════════════════════
+# Tkinter GUI
+# ═══════════════════════════════════════════════════════════════
+
+BG_DARK = "#0f0f1a"
+BG_PANEL = "#16213e"
+BG_ENTRY = "#0f3460"
+FG_TEXT = "#e0e0e0"
+FG_ACCENT = "#00d4ff"
+FG_DIM = "#666666"
+GREEN = "#00e676"
+YELLOW = "#ffd600"
+RED = "#ff1744"
+ORANGE = "#ff9100"
+
+
+class AnomalyDetectorGUI:
+    def __init__(self):
+        self.root = tk.Tk()
+        self.root.title("Road Anomaly Detection")
+        self.root.configure(bg=BG_DARK)
+        self.root.geometry("1020x680")
+        self.root.minsize(850, 550)
+
+        self.engine = DetectionEngine()
+        self._photo = None
+        self._build_ui()
+        self._poll()
+
+    # ── Build UI ──────────────────────────────────────────────
+
+    def _build_ui(self):
+        # Header
+        hdr = tk.Frame(self.root, bg=BG_DARK)
+        hdr.pack(fill="x", padx=12, pady=(10, 6))
+        tk.Label(hdr, text="🛣  Road Anomaly Detection", bg=BG_DARK, fg=FG_ACCENT,
+                 font=("Helvetica", 17, "bold")).pack(side="left")
+        self.status_dot = tk.Label(hdr, text="● STOPPED", bg=BG_DARK, fg=FG_DIM,
+                                    font=("Helvetica", 12))
+        self.status_dot.pack(side="right")
+
+        # Main split
+        body = tk.Frame(self.root, bg=BG_DARK)
+        body.pack(fill="both", expand=True, padx=12, pady=(0, 10))
+
+        # LEFT — video
+        left = tk.Frame(body, bg="#000000", bd=2, relief="groove")
+        left.pack(side="left", fill="both", expand=True, padx=(0, 8))
+        self.video_lbl = tk.Label(left, bg="#000000",
+                                   text="Select a mode and press Start",
+                                   fg="#444", font=("Helvetica", 15))
+        self.video_lbl.pack(fill="both", expand=True)
+
+        # RIGHT — sidebar
+        right = tk.Frame(body, bg=BG_DARK, width=280)
+        right.pack(side="right", fill="y")
+        right.pack_propagate(False)
+
+        # ── Mode selector ──
+        mode_box = tk.LabelFrame(right, text=" Mode ", bg=BG_PANEL, fg=FG_ACCENT,
+                                  font=("Helvetica", 10, "bold"), bd=1, padx=8, pady=6)
+        mode_box.pack(fill="x", pady=(0, 6))
+
+        self.mode_var = tk.StringVar(value="video")
+        for text, val in [("📹  Pi Camera / Webcam", "camera"),
+                          ("🎬  Video File", "video")]:
+            tk.Radiobutton(mode_box, text=text, variable=self.mode_var, value=val,
+                           bg=BG_PANEL, fg=FG_TEXT, selectcolor=BG_ENTRY,
+                           activebackground=BG_PANEL, activeforeground=FG_ACCENT,
+                           font=("Helvetica", 10), anchor="w"
+                           ).pack(fill="x", pady=1)
+
+        # File chooser
+        ff = tk.Frame(mode_box, bg=BG_PANEL)
+        ff.pack(fill="x", pady=(4, 2))
+        self.file_var = tk.StringVar()
+        tk.Entry(ff, textvariable=self.file_var, bg=BG_ENTRY, fg=FG_TEXT,
+                 insertbackground="#fff", font=("Consolas", 9), bd=0
+                 ).pack(side="left", fill="x", expand=True, ipady=3)
+        tk.Button(ff, text="…", command=self._browse, bg=BG_ENTRY, fg=FG_TEXT,
+                  font=("Helvetica", 10), bd=0, padx=8).pack(side="right", padx=(4, 0))
+
+        # Camera ID
+        cf = tk.Frame(mode_box, bg=BG_PANEL)
+        cf.pack(fill="x", pady=(2, 0))
+        tk.Label(cf, text="Cam ID:", bg=BG_PANEL, fg=FG_DIM,
+                 font=("Helvetica", 9)).pack(side="left")
+        self.cam_var = tk.StringVar(value="0")
+        tk.Entry(cf, textvariable=self.cam_var, width=4, bg=BG_ENTRY, fg=FG_TEXT,
+                 font=("Consolas", 10), bd=0).pack(side="left", padx=4, ipady=2)
+
+        # ── Controls ──
+        ctrl = tk.Frame(right, bg=BG_DARK)
+        ctrl.pack(fill="x", pady=(0, 6))
+        self.btn_start = tk.Button(ctrl, text="▶  Start", command=self._start,
+                                    bg="#00a86b", fg="white",
+                                    font=("Helvetica", 11, "bold"), bd=0, pady=5)
+        self.btn_start.pack(side="left", fill="x", expand=True, padx=(0, 3))
+        self.btn_stop = tk.Button(ctrl, text="■  Stop", command=self._stop,
+                                   bg="#c0392b", fg="white",
+                                   font=("Helvetica", 11, "bold"), bd=0, pady=5,
+                                   state="disabled")
+        self.btn_stop.pack(side="right", fill="x", expand=True)
+
+        # ── Stats panel ──
+        stats_box = tk.LabelFrame(right, text=" Pipeline Stats ", bg=BG_PANEL, fg=FG_ACCENT,
+                                    font=("Helvetica", 10, "bold"), bd=1, padx=8, pady=4)
+        stats_box.pack(fill="x", pady=(0, 6))
+
+        self.stat_lbls = {}
+        for label, key in [("FPS", "fps"), ("Frame", "frame"), ("Latency", "latency"),
+                           ("Motion %", "motion"), ("AE Error", "ae_error"),
+                           ("AE Thresh", "ae_thresh"), ("Anomaly", "anomaly"),
+                           ("YOLO", "yolo"), ("Tracks", "tracks")]:
+            row = tk.Frame(stats_box, bg=BG_PANEL)
+            row.pack(fill="x", pady=1)
+            tk.Label(row, text=label, bg=BG_PANEL, fg=FG_DIM,
+                     font=("Consolas", 9), width=10, anchor="w").pack(side="left")
+            v = tk.Label(row, text="—", bg=BG_PANEL, fg=FG_TEXT,
+                         font=("Consolas", 10, "bold"), anchor="w")
+            v.pack(side="left", fill="x")
+            self.stat_lbls[key] = v
+
+        # AE bar canvas
+        self.ae_canvas = tk.Canvas(stats_box, bg=BG_PANEL, height=12, bd=0,
+                                    highlightthickness=0)
+        self.ae_canvas.pack(fill="x", pady=(2, 4))
+
+        # ── Anomaly alerts ──
+        alert_box = tk.LabelFrame(right, text=" ⚠ Anomaly Alerts ", bg=BG_PANEL,
+                                    fg="#ff6b6b", font=("Helvetica", 10, "bold"),
+                                    bd=1, padx=4, pady=4)
+        alert_box.pack(fill="both", expand=True)
+
+        self.alert_text = tk.Text(alert_box, bg="#080818", fg=RED,
+                                   font=("Consolas", 9), wrap="word", bd=0,
+                                   state="disabled", height=6)
+        self.alert_text.pack(fill="both", expand=True)
+        self.alert_text.tag_configure("road_damage", foreground="#ff3c3c")
+        self.alert_text.tag_configure("speed_bump", foreground="#ffa500")
+        self.alert_text.tag_configure("unsurfaced_road", foreground="#00dcdc")
+        self.alert_text.tag_configure("info", foreground="#888888")
+        self.alert_text.tag_configure("ts", foreground="#444444")
+
+    # ── Actions ───────────────────────────────────────────────
+
+    def _browse(self):
+        p = filedialog.askopenfilename(
+            title="Select Video",
+            filetypes=[("Video", "*.mp4 *.avi *.mkv *.mov"), ("All", "*.*")])
+        if p:
+            self.file_var.set(p)
+
+    def _start(self):
+        mode = self.mode_var.get()
+        if mode == "video":
+            src = self.file_var.get()
+            if not src or not os.path.exists(src):
+                messagebox.showerror("Error", "Select a valid video file.")
+                return
+        else:
+            src = self.cam_var.get()
+
+        self.btn_start.config(state="disabled")
+        self.btn_stop.config(state="normal")
+        self.status_dot.config(text="● RUNNING", fg=GREEN)
+        self._add_alert("info", f"Started — {mode}: {os.path.basename(str(src))}")
+        self.engine.start(src, mode)
+
+    def _stop(self):
+        self.engine.stop()
+        self.btn_start.config(state="normal")
+        self.btn_stop.config(state="disabled")
+        self.status_dot.config(text="● STOPPED", fg=FG_DIM)
+        self._add_alert("info", "Stopped")
+
+    def _add_alert(self, tag, text):
+        ts = datetime.now().strftime("%H:%M:%S")
+        self.alert_text.config(state="normal")
+        self.alert_text.insert("end", f"[{ts}] ", "ts")
+        self.alert_text.insert("end", f"⚠ {text}\n", tag)
+        self.alert_text.see("end")
+        self.alert_text.config(state="disabled")
+
+    # ── Polling loop ──────────────────────────────────────────
+
+    def _poll(self):
+        """Update GUI from engine state — runs on main thread every 33ms."""
+
+        # Frame
+        frame = self.engine.get_frame()
+        if frame is not None:
+            h, w = frame.shape[:2]
+            vw = max(self.video_lbl.winfo_width(), 100)
+            vh = max(self.video_lbl.winfo_height(), 100)
+            scale = min(vw / w, vh / h, 2.0)
+            if abs(scale - 1.0) > 0.05:
+                nw, nh = int(w * scale), int(h * scale)
+                frame = cv2.resize(frame, (nw, nh))
+            img = Image.fromarray(frame)
+            self._photo = ImageTk.PhotoImage(img)
+            self.video_lbl.config(image=self._photo, text="")
+
+        # Alerts
+        for tag, text, color in self.engine.get_new_alerts():
+            self._add_alert(tag, text)
+
+        # Stats
+        s = self.engine.get_stats()
+        if s:
+            self._set_stat("fps", f"{s.get('fps', 0):.1f}")
+            f = s.get("frame", 0)
+            tf = s.get("total_frames", 0)
+            self._set_stat("frame", f"{f}/{tf}" if tf else str(f))
+
+            lat = s.get("latency_ms", 0)
+            self._set_stat("latency", f"{lat:.0f} ms",
+                           GREEN if lat < 33 else YELLOW if lat < 66 else RED)
+
+            self._set_stat("motion", f"{s.get('motion_pct', 0):.1f}%")
+
+            ae_err = s.get("ae_error")
+            ae_thresh = s.get("ae_threshold")
+            if ae_err is not None:
+                c = RED if s.get("anomaly") else GREEN
+                self._set_stat("ae_error", f"{ae_err:.4f}", c)
+                self._draw_ae_bar(ae_err, ae_thresh or 0.06)
             else:
-                lbl = f"T{t.id}"
-            put_text(display, lbl, (tx * scale, max(fy - 8, 16)), 0.5, color, 1)
+                self._set_stat("ae_error", "off" if not s.get("ae_on") else "—")
+            self._set_stat("ae_thresh",
+                           f"{ae_thresh:.4f}" if ae_thresh else "—")
 
-        # ── HUD Panel (right side) ──
-        panel_w = 220
-        panel_x = dw - panel_w - 8
-        panel_y = 8
-        draw_rounded_rect(display, (panel_x, panel_y),
-                          (panel_x + panel_w, panel_y + 200),
-                          (15, 15, 30), alpha=0.75)
+            anom = s.get("anomaly", False)
+            self._set_stat("anomaly", "⚠ YES" if anom else "no",
+                           RED if anom else GREEN)
 
-        px = panel_x + 10
-        py = panel_y + 18
-        lh = 20  # line height
+            ybusy = s.get("yolo_busy")
+            ycd = s.get("yolo_cooldown", 0)
+            yn = s.get("yolo_calls", 0)
+            if ybusy:
+                self._set_stat("yolo", f"BUSY ({yn})", YELLOW)
+            elif ycd > 0:
+                self._set_stat("yolo", f"CD:{ycd} ({yn})", FG_ACCENT)
+            else:
+                self._set_stat("yolo", f"READY ({yn})", GREEN)
 
-        # Title
-        put_text(display, src_name[:25], (px, py), 0.4, (0, 212, 255), 1)
-        py += lh
+            self._set_stat("tracks", str(s.get("tracks", 0)))
 
-        # FPS + latency
-        lat_color = (0, 220, 0) if load_avg_ms < 33 else (0, 200, 255) if load_avg_ms < 66 else (0, 0, 255)
-        put_text(display, f"FPS: {fps:.0f}", (px, py), 0.45, (255, 255, 255), 1)
-        put_text(display, f"{load_avg_ms:.0f}ms", (px + 80, py), 0.4, lat_color, 1)
-        py += lh
+        # Auto-stop
+        if not self.engine.running and self.btn_stop["state"] == "normal":
+            self._stop()
 
-        # Frame progress
-        if total_frames > 0:
-            pct = frame_count / total_frames
-            put_text(display, f"Frame: {frame_count}/{total_frames}", (px, py), 0.35, (160, 160, 160))
-            draw_bar(display, px, py + 4, panel_w - 20, 4, pct, 1.0, (0, 180, 255))
-        else:
-            put_text(display, f"Frame: {frame_count}", (px, py), 0.35, (160, 160, 160))
-        py += lh
+        self.root.after(33, self._poll)
 
-        # AE error bar
-        if last_ae_error is not None:
-            ae_col = (0, 0, 255) if ae_says_anomaly else (0, 220, 0)
-            thresh_val = cfg.ae_threshold * mw if ae else 0
-            max_ae = max(thresh_val * 3, 0.15)
-            draw_bar(display, px, py - 4, panel_w - 20, 8,
-                     last_ae_error, max_ae, ae_col, thresh=thresh_val)
-            ae_star = " *" if run_ae else ""
-            put_text(display, f"AE: {last_ae_error:.4f}{ae_star}", (px, py + 12), 0.35, ae_col)
-        else:
-            put_text(display, "AE: off", (px, py + 5), 0.35, (100, 100, 100))
-        py += lh + 8
+    def _set_stat(self, key, value, color=None):
+        if key in self.stat_lbls:
+            self.stat_lbls[key].config(text=value, fg=color or FG_TEXT)
 
-        # YOLO status
-        if yolo.is_busy:
-            yolo_str, yolo_col = f"YOLO: BUSY ({yolo_calls})", (0, 200, 255)
-        elif yolo_cooldown > 0:
-            yolo_str, yolo_col = f"YOLO: CD:{yolo_cooldown} ({yolo_calls})", (255, 200, 0)
-        else:
-            yolo_str, yolo_col = f"YOLO: READY ({yolo_calls})", (0, 220, 0)
-        put_text(display, yolo_str, (px, py), 0.38, yolo_col)
-        py += lh
+    def _draw_ae_bar(self, error, threshold):
+        c = self.ae_canvas
+        c.delete("all")
+        w = c.winfo_width()
+        if w < 10:
+            return
+        max_val = max(threshold * 3, 0.15)
+        err_px = int(min(error / max_val, 1.0) * w)
+        thr_px = int(min(threshold / max_val, 1.0) * w)
+        # Background
+        c.create_rectangle(0, 0, w, 12, fill="#222", outline="")
+        # Error fill
+        fill_color = "#ff1744" if error > threshold else "#00e676"
+        c.create_rectangle(0, 0, err_px, 12, fill=fill_color, outline="")
+        # Threshold line
+        c.create_line(thr_px, 0, thr_px, 12, fill="white", width=2)
 
-        # Motion + tracks
-        put_text(display, f"Motion: {motion_pct:.1f}%  Tracks: {len(active_tracks)}",
-                 (px, py), 0.35, (160, 160, 160))
-        py += lh
+    # ── Lifecycle ─────────────────────────────────────────────
 
-        # Anomaly indicator
-        if ae_says_anomaly:
-            put_text(display, "!! ANOMALY !!", (px, py), 0.5, (0, 0, 255), 2)
-        py += lh
+    def run(self):
+        self.root.protocol("WM_DELETE_WINDOW", self._on_close)
+        self.root.mainloop()
 
-        # ── Alert panel (bottom) ──
-        if alerts:
-            alert_h = min(len(alerts), 4) * 22 + 10
-            alert_y = dh - alert_h - 8
-            draw_rounded_rect(display, (8, alert_y), (dw - 8, dh - 8),
-                              (10, 10, 40), alpha=0.75)
-            ay = alert_y + 18
-            for ts, label, conf, tid in list(alerts)[-4:]:
-                color = CLASS_COLORS.get(label, (0, 255, 255))
-                put_text(display, f"[{ts}]", (16, ay), 0.32, (100, 100, 100))
-                put_text(display, f" {label} {conf:.0%} #T{tid}",
-                         (90, ay), 0.38, color, 1)
-                ay += 22
-
-        # Pause indicator
-        if paused:
-            put_text(display, "|| PAUSED", (dw // 2 - 50, dh // 2), 0.8,
-                     (255, 255, 255), 2)
-
-        cv2.imshow(win_name, display)
-
-        # Key handling
-        key = cv2.waitKey(1) & 0xFF
-        if key in (ord('q'), 27):
-            break
-        elif key == ord(' '):
-            paused = not paused
-        elif key == ord('r'):
-            tracker = SimpleTracker(iou_thresh=cfg.tracker_iou,
-                                     max_lost=cfg.tracker_max_lost)
-            alerts.clear()
-
-    # Cleanup
-    yolo.stop_async()
-    cap.release()
-    cv2.destroyAllWindows()
-
-    print(f"\n  Done: {frame_count} frames, {yolo_calls} YOLO calls, "
-          f"avg FPS: {fps:.1f}\n")
-
-
-def main():
-    source, mode = select_mode()
-
-    if mode == "batch":
-        for video_path in source:
-            print(f"\n{'─'*50}")
-            run_gui(video_path, "video")
-    else:
-        run_gui(source, mode)
+    def _on_close(self):
+        self.engine.stop()
+        self.root.destroy()
 
 
 if __name__ == "__main__":
-    main()
+    app = AnomalyDetectorGUI()
+    app.run()
