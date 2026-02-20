@@ -147,6 +147,8 @@ class DetectionEngine:
         yolo_cooldown = 0
         ae_says_anomaly = False
         motion_pct = 0.0
+        ae_run_counter = 0  # throttle AE to every Nth processed frame
+        ae_every_n = 3      # run AE once per 3 processed frames
 
         try:
             while self._running:
@@ -157,6 +159,11 @@ class DetectionEngine:
                     break
 
                 frame_count += 1
+
+                # Skip 2 of every 3 frames to reduce load
+                if frame_count % 3 != 0:
+                    continue
+
                 t0 = time.time()
 
                 frame = cv2.resize(raw_frame, (cfg.proc_width, cfg.proc_height))
@@ -190,10 +197,12 @@ class DetectionEngine:
                             all_tracked = False
                             break
 
-                # AE
+                # AE — throttled to every Nth processed frame
                 ae_says_anomaly = False
                 if ae and motion_regions:
-                    run_ae = not all_tracked or (frame_count % cfg.ae_recheck_interval == 0)
+                    ae_run_counter += 1
+                    run_ae = (ae_run_counter % ae_every_n == 0) or \
+                             (not all_tracked and ae_run_counter % 2 == 0)
                     if run_ae:
                         eff_thresh = cfg.ae_threshold * mw
                         ae_says_anomaly, ae_err, _ = ae.is_anomaly_smoothed(roi, eff_thresh)
@@ -300,10 +309,7 @@ class DetectionEngine:
                         "ae_on": ae is not None,
                     }
 
-                # Throttle for video files
-                target_delay = 1.0 / src_fps - elapsed
-                if target_delay > 0 and isinstance(source, str):
-                    time.sleep(target_delay * 0.8)
+
 
         finally:
             yolo.stop_async()
