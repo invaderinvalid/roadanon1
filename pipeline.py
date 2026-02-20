@@ -165,12 +165,14 @@ def run(cfg: Config):
     stage_times = defaultdict(float)
     stage_counts = defaultdict(int)
     frame_count = 0
+    processed_count = 0
     yolo_calls = 0
     known_total = 0
     unknown_total = 0
     motion_skipped = 0
     fps = 0.0
     t_start = time.time()
+    t_processing = 0.0  # actual processing time (excludes I/O wait)
 
     # Pending YOLO results from async — applied on next frame
     pending_dets = [[] for _ in cfg.sources]
@@ -197,11 +199,9 @@ def run(cfg: Config):
 
             frame_count += 1
 
-            # Skip frames — keep BG model fresh
+            # Skip frames — no need to run motion on skipped frames
+            # (frame differencing doesn't need continuous BG updates)
             if skip_n > 0 and (frame_count % skip_n != 0):
-                for idx, frame in enumerate(frames):
-                    if frame is not None:
-                        motion_dets[idx].detect(frame[roi_y_start:roi_y_end])
                 continue
 
             for idx, frame in enumerate(frames):
@@ -210,6 +210,7 @@ def run(cfg: Config):
 
                 t_frame = time.time()
                 roi = frame[roi_y_start:roi_y_end]
+                processed_count += 1
 
                 # ── Motion detection ──
                 _t = time.time() if do_profile else 0
@@ -293,6 +294,7 @@ def run(cfg: Config):
 
                 # ── Draw ──
                 elapsed = time.time() - t_frame
+                t_processing += elapsed
                 fps = 0.9 * fps + 0.1 * (1.0 / max(elapsed, 0.001))
 
                 if cfg.save_video or cfg.show_preview:
@@ -331,15 +333,17 @@ def run(cfg: Config):
         cv2.destroyAllWindows()
 
     elapsed_total = time.time() - t_start
+    proc_fps = processed_count / max(t_processing, 0.001)
     print(f"\n{'='*55}")
     print(f"  Pipeline Complete!")
     print(f"{'='*55}")
-    print(f"  Frames:       {frame_count}")
+    print(f"  Total frames: {frame_count}")
+    print(f"  Processed:    {processed_count}")
     print(f"  Known:        {known_total}")
     print(f"  Unknown:      {unknown_total}")
-    print(f"  YOLO calls:   {yolo_calls} / {frame_count} frames")
-    print(f"  Avg FPS:      {frame_count / max(elapsed_total, 0.001):.1f}")
-    print(f"  Time:         {elapsed_total:.1f}s")
+    print(f"  YOLO calls:   {yolo_calls} / {processed_count} processed")
+    print(f"  Proc FPS:     {proc_fps:.1f} (processing only)")
+    print(f"  Wall time:    {elapsed_total:.1f}s")
     print(f"  Skipped:      {motion_skipped} (motion gate)")
     print(f"{'='*55}")
 
