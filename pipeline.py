@@ -1,4 +1,15 @@
-"""Main pipeline: ties all modules together."""
+"""Main pipeline: ties all modules together.
+
+Optimized flow:
+  1. Read frame → crop to ROI (skip sky/horizon)
+  2. Motion mask on ROI
+  3. Black-out motion → AE on masked ROI
+  4. Error map → extract crops from ORIGINAL ROI
+  5. Feed crops to tracker (IoU matching)
+  6. YOLO runs ONLY on NEW tracks (biggest FPS win)
+  7. Active tracks carry forward labels — no re-classification
+  8. Log + save image once per track lifetime
+"""
 
 import cv2
 import json
@@ -12,6 +23,7 @@ from preprocessing import MultiCamera
 from motion_detect import MotionDetector
 from autoencoder import AnomalyDetector
 from cropping import Cropper, Validator
+from tracker import SimpleTracker
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -41,44 +53,61 @@ YOLO_COLORS = [
     (0, 255, 255),  # unsurfaced   — yellow
 ]
 
+CLASS_COLORS = {
+    "road_damage": (0, 0, 255),
+    "speed_bump": (0, 165, 255),
+    "unsurfaced_road": (0, 255, 255),
+}
 
-def draw_results(frame, motion_regions, anomaly_crops, mean_error, fps):
+
+def draw_results(frame, roi_y, active_tracks, mean_error, fps, motion_regions=None):
     display = frame.copy()
+    h, w = display.shape[:2]
 
-    # Motion regions (green)
-    for (x, y, w, h), _ in motion_regions:
-        cv2.rectangle(display, (x, y), (x+w, y+h), (0, 255, 0), 1)
+    # ROI boundary (dotted cyan line)
+    if roi_y > 0:
+        for x0 in range(0, w, 12):
+            cv2.line(display, (x0, roi_y), (min(x0 + 6, w), roi_y), (255, 255, 0), 1)
 
-    # Anomaly crops (red box + AE score + YOLO detections)
-    for crop in anomaly_crops:
-        x, y, w, h = crop["bbox"]
-        # Color: cyan for unknown, class-color for known
-        is_known = len(crop.get("yolo", [])) > 0
-        box_color = (0, 0, 255) if is_known else (255, 255, 0)  # red=known, cyan=unknown
-        cv2.rectangle(display, (x, y), (x+w, y+h), box_color, 2)
-        label = f"AE:{crop['score']:.3f}"
-        if not is_known:
-            label += " [unknown]"
-        cv2.putText(display, label, (x, max(y-5, 12)),
-                    cv2.FONT_HERSHEY_SIMPLEX, 0.45, box_color, 1)
+    # Motion regions (dim green, within ROI)
+    if motion_regions:
+        for (mx, my, mw, mh), _ in motion_regions:
+            cv2.rectangle(display, (mx, roi_y + my), (mx + mw, roi_y + my + mh),
+                          (0, 180, 0), 1)
 
-        for det in crop.get("yolo", []):
+    # Tracked anomalies
+    for t in active_tracks:
+        tx, ty, tw, th = t.bbox
+        # Offset bbox back to full-frame coords
+        fy = roi_y + ty
+        is_known = t.label is not None
+        color = CLASS_COLORS.get(t.label, (255, 255, 0))  # cyan for unknown
+        thickness = 2 if is_known else 1
+
+        cv2.rectangle(display, (tx, fy), (tx + tw, fy + th), color, thickness)
+
+        # Label
+        if is_known:
+            lbl = f"T{t.id} {t.label} {t.confidence:.2f}"
+        else:
+            lbl = f"T{t.id} unknown AE:{t.score:.3f}"
+        cv2.putText(display, lbl, (tx, max(fy - 5, 12)),
+                    cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1)
+
+        # YOLO sub-boxes (only for known)
+        for det in t.yolo_dets:
             bx, by, bw, bh = det["bbox"]
-            bx2, by2 = x + bx, y + by
-            color = YOLO_COLORS[det["class_id"] % len(YOLO_COLORS)]
-            cv2.rectangle(display, (bx2, by2), (bx2+bw, by2+bh), color, 2)
-            cv2.putText(display, f"{det['class_name']} {det['confidence']:.2f}",
-                        (bx2, max(by2-4, 12)), cv2.FONT_HERSHEY_SIMPLEX, 0.45, color, 1)
+            bx2, by2 = tx + bx, fy + by
+            dc = CLASS_COLORS.get(det["class_name"], (255, 255, 0))
+            cv2.rectangle(display, (bx2, by2), (bx2 + bw, by2 + bh), dc, 2)
 
     # Status bar
     cv2.putText(display, f"FPS: {fps:.1f}", (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
-    cv2.putText(display, f"AE Error: {mean_error:.4f}", (10, 50),
+    cv2.putText(display, f"AE: {mean_error:.4f}", (10, 50),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (200, 100, 255), 2)
-    cv2.putText(display, f"Motion: {len(motion_regions)}", (10, 75),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 255, 0), 2)
-    cv2.putText(display, f"Anomalies: {len(anomaly_crops)}", (10, 100),
-                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 0, 255), 2)
+    cv2.putText(display, f"Tracks: {len(active_tracks)}", (10, 75),
+                cv2.FONT_HERSHEY_SIMPLEX, 0.6, (0, 200, 255), 2)
     return display
 
 
@@ -87,44 +116,36 @@ def draw_results(frame, motion_regions, anomaly_crops, mean_error, fps):
 # ═══════════════════════════════════════════════════════════════
 
 class JSONLLogger:
-    """Writes one JSON line per anomaly crop. Separates known/unknown."""
+    """Writes one JSON line per NEW track (first detection only)."""
 
     def __init__(self, path):
         self._file = open(path, "w")
-        self._prev = {}  # cam_id -> set of crop keys for dedup
 
-    def log(self, frame_num, cam_id, mean_error, crop, kind="known"):
-        yolo = crop.get("yolo", [])
-        top_cls = yolo[0]["class_name"] if yolo else "unknown_anomaly"
-        top_conf = yolo[0]["confidence"] if yolo else 0.0
-
-        # Dedup: skip if same bbox+class as previous frame on same camera
-        key = (crop["bbox"], top_cls)
-        prev = self._prev.get(cam_id, set())
-        if key in prev:
-            return
-        self._prev[cam_id] = {key}
+    def log_track(self, track, cam_id):
+        """Log when a track is first confirmed. Returns event dict."""
+        top_cls = track.label or "unknown_anomaly"
+        top_conf = track.confidence
 
         event = {
             "timestamp": datetime.now().isoformat(),
-            "frame": frame_num,
+            "track_id": track.id,
+            "first_frame": track.first_frame,
             "camera": cam_id,
-            "kind": kind,  # "known" or "unknown"
-            "ae_error": round(mean_error, 4),
-            "crop_score": round(crop["score"], 4),
-            "bbox": {"x": crop["bbox"][0], "y": crop["bbox"][1],
-                     "w": crop["bbox"][2], "h": crop["bbox"][3]},
+            "kind": "known" if track.label else "unknown",
+            "ae_error": round(track.score, 4),
+            "bbox": {"x": track.bbox[0], "y": track.bbox[1],
+                     "w": track.bbox[2], "h": track.bbox[3]},
             "class": top_cls,
             "yolo_confidence": top_conf,
             "yolo_detections": [
                 {"class": d["class_name"], "confidence": d["confidence"],
                  "bbox": {"x": d["bbox"][0], "y": d["bbox"][1],
                           "w": d["bbox"][2], "h": d["bbox"][3]}}
-                for d in yolo
+                for d in track.yolo_dets
             ],
         }
         self._file.write(json.dumps(event) + "\n")
-        return event  # return for image saving
+        return event
 
     def close(self):
         self._file.close()
@@ -165,44 +186,51 @@ class VideoWriterWrapper:
 def run(cfg: Config):
     print("╔══════════════════════════════════════╗")
     print("║   Road Anomaly Detection Pipeline    ║")
+    print("║   (ROI + Tracker optimized)          ║")
     print("╚══════════════════════════════════════╝\n")
 
     os.makedirs(cfg.output_dir, exist_ok=True)
-    known_dir = os.path.join(cfg.output_dir, "known")
-    unknown_dir = os.path.join(cfg.output_dir, "unknown")
-    os.makedirs(known_dir, exist_ok=True)
-    os.makedirs(unknown_dir, exist_ok=True)
     log_path = os.path.join(cfg.output_dir, "detections.jsonl")
 
     camera = MultiCamera(cfg)
     src_fps = camera.src_fps or 30.0
+
+    # ROI: vertical slice of frame (skip sky/horizon)
+    roi_y_start = int(cfg.proc_height * cfg.roi_top)     # e.g. 0.4 * 480 = 192
+    roi_y_end = int(cfg.proc_height * cfg.roi_bottom)     # e.g. 1.0 * 480 = 480
+    roi_h = roi_y_end - roi_y_start
+
+    print(f"[ROI] y={roi_y_start}..{roi_y_end} ({roi_h}px of {cfg.proc_height}px) "
+          f"— skipping top {cfg.roi_top*100:.0f}%")
+
+    # Per-camera modules
     motion_dets = [MotionDetector(cfg) for _ in cfg.sources]
+    trackers = [SimpleTracker(iou_thresh=cfg.tracker_iou,
+                              max_lost=cfg.tracker_max_lost)
+                for _ in cfg.sources]
+
     ae = AnomalyDetector(cfg)
     cropper = Cropper(cfg)
     validator = Validator(cfg)
     yolo = load_classifier(cfg)
     logger = JSONLLogger(log_path)
-    vid_writer = VideoWriterWrapper(cfg.output_dir, cfg.proc_width, cfg.proc_height)
+    vid_writer = VideoWriterWrapper(cfg.output_dir, cfg.proc_width, cfg.proc_height) if cfg.save_video else None
 
     print(f"[Pipeline] Log → {log_path}")
-    print(f"[Pipeline] Known anomalies → {known_dir}/")
-    print(f"[Pipeline] Unknown anomalies → {unknown_dir}/")
+    print(f"[Pipeline] Tracker IoU={cfg.tracker_iou} max_lost={cfg.tracker_max_lost}")
+    print(f"[Pipeline] Video: {'ON' if cfg.save_video else 'OFF (--no-video)'}")
     print("[Pipeline] Running... Press 'q' to quit.\n")
 
     frame_count = 0
     skip_n = cfg.skip_frames
-    motion_total = 0
-    anomaly_total = 0
     known_total = 0
     unknown_total = 0
-    img_counter = 0
+    yolo_calls = 0
     t_start = time.time()
     fps = 0.0
 
     if skip_n > 0:
         print(f"[Pipeline] Frame skip: processing every {skip_n} frame(s)")
-    if cfg.max_crops < 999:
-        print(f"[Pipeline] Max crops per frame: {cfg.max_crops}")
 
     try:
         while True:
@@ -213,104 +241,108 @@ def run(cfg: Config):
 
             frame_count += 1
 
-            # Frame skipping — still read (to advance video) but skip heavy ops
+            # Frame skipping — update BG model but skip heavy ops
             if skip_n > 0 and (frame_count % skip_n != 0):
-                # Feed frame to motion detector to keep BG model updated
-                for i, frame in enumerate(frames):
+                for idx, frame in enumerate(frames):
                     if frame is not None:
-                        motion_dets[i].detect(frame)
+                        roi = frame[roi_y_start:roi_y_end]
+                        motion_dets[idx].detect(roi)
                 continue
 
-            for i, frame in enumerate(frames):
+            for idx, frame in enumerate(frames):
                 if frame is None:
                     continue
 
                 t_frame = time.time()
                 mean_error = 0.0
-                anomaly_crops = []
+                motion_regions = []
 
-                # Stage 1: Motion detection → binary mask
-                mask, motion_regions = motion_dets[i].detect(frame)
+                # ── Stage 1: Crop to ROI ──
+                roi = frame[roi_y_start:roi_y_end]
+
+                # ── Stage 2: Motion mask on ROI ──
+                mask, motion_regions = motion_dets[idx].detect(roi)
+
+                # ── Build detection candidates for tracker ──
+                det_candidates = []
 
                 if motion_regions:
-                    motion_total += 1
+                    # ── Stage 3: Mask moving objects before AE (in-place, no copy) ──
+                    mask_bool = mask > 0
+                    masked_roi = roi.copy()  # need copy since roi is a view
+                    masked_roi[mask_bool] = 0
 
-                    # Stage 2: Mask moving objects (black out) before AE
-                    #   Prevents shadows/people from triggering false anomalies
-                    masked_frame = frame.copy()
-                    mask_inv = (mask > 0)  # True where motion exists
-                    masked_frame[mask_inv] = 0  # black out motion pixels
-
-                    # Stage 3: Autoencoder on masked frame
-                    error_map, mean_error = ae.infer(masked_frame)
-
-                    # Zero out error in masked regions (black boxes aren't anomalies)
-                    error_map[mask_inv] = 0.0
-                    # Recompute mean error excluding masked pixels
-                    unmasked = ~mask_inv
+                    # ── Stage 4: AE on masked ROI ──
+                    error_map, mean_error = ae.infer(masked_roi)
+                    error_map[mask_bool] = 0.0
+                    unmasked = ~mask_bool
                     if unmasked.any():
                         mean_error = float(error_map[unmasked].mean())
                     else:
                         mean_error = 0.0
 
                     if mean_error > cfg.ae_threshold:
-                        # Stage 4: Crop from ORIGINAL frame using cleaned error map
-                        crops = cropper.extract(frame, error_map, cfg.ae_threshold)
+                        # ── Stage 5: Crop from ORIGINAL ROI ──
+                        crops = cropper.extract(roi, error_map, cfg.ae_threshold)
 
-                        # Stage 5: Validate + YOLO classify
-                        yolo_count = 0
+                        crop_count = 0
                         for crop in crops:
-                            if yolo_count >= cfg.max_crops:
+                            if crop_count >= cfg.max_crops:
                                 break
                             if validator.is_valid(crop["image"]):
-                                crop["yolo"] = yolo.infer(crop["image"])
-                                anomaly_crops.append(crop)
-                                yolo_count += 1
+                                det_candidates.append({
+                                    "bbox": crop["bbox"],      # in ROI coords
+                                    "score": crop["score"],
+                                    "image": crop["image"],
+                                })
+                                crop_count += 1
 
-                        # Stage 6: Separate known / unknown + log + save images
-                        if anomaly_crops:
-                            anomaly_total += 1
-                            for crop in anomaly_crops:
-                                has_det = len(crop.get("yolo", [])) > 0
-                                kind = "known" if has_det else "unknown"
-                                event = logger.log(frame_count, i, mean_error, crop, kind)
-                                if event is not None:  # not deduped
-                                    img_counter += 1
-                                    if has_det:
-                                        known_total += 1
-                                        cls = crop["yolo"][0]["class_name"]
-                                        fname = f"{img_counter:04d}_f{frame_count}_{cls}.jpg"
-                                        cv2.imwrite(os.path.join(known_dir, fname), crop["image"])
-                                    else:
-                                        unknown_total += 1
-                                        fname = f"{img_counter:04d}_f{frame_count}_unknown.jpg"
-                                        cv2.imwrite(os.path.join(unknown_dir, fname), crop["image"])
+                # ── Stage 6: Tracker update ──
+                tracker = trackers[idx]
+                new_tracks, active_tracks, gone_tracks = tracker.update(
+                    det_candidates, frame_count)
 
-                # Draw & write video
+                # ── Stage 7: YOLO only on NEW tracks ──
+                for t in new_tracks:
+                    if t.image is not None and validator.is_valid(t.image):
+                        dets = yolo.infer(t.image)
+                        yolo_calls += 1
+                        t.yolo_dets = dets
+                        if dets:
+                            t.label = dets[0]["class_name"]
+                            t.confidence = dets[0]["confidence"]
+
+                    # ── Stage 8: Log (once per track, no image saving) ──
+                    t.logged = True
+                    event = logger.log_track(t, idx)
+                    if t.label:
+                        known_total += 1
+                    else:
+                        unknown_total += 1
+
+                # ── Draw + write video (conditional) ──
                 elapsed = time.time() - t_frame
                 fps = 0.9 * fps + 0.1 * (1.0 / max(elapsed, 0.001))
-                display = draw_results(frame, motion_regions, anomaly_crops, mean_error, fps)
-                vid_writer.write(i, display)
 
-                if cfg.show_preview:
-                    cv2.imshow(f"Camera {i}", display)
-                    if mean_error > 0:
-                        err_vis = cv2.resize(error_map, (480, 270))
-                        err_vis = (err_vis * 255 / max(err_vis.max(), 0.001)).astype(np.uint8)
-                        err_vis = cv2.applyColorMap(err_vis, cv2.COLORMAP_JET)
-                        cv2.imshow(f"Error Map {i}", err_vis)
+                if cfg.save_video or cfg.show_preview:
+                    display = draw_results(frame, roi_y_start, active_tracks,
+                                           mean_error, fps, motion_regions)
+                    if vid_writer:
+                        vid_writer.write(idx, display)
+                    if cfg.show_preview:
+                        cv2.imshow(f"Camera {idx}", display)
 
             if frame_count % 30 == 0:
+                total_tracks = sum(len(tr.tracks) for tr in trackers)
                 print(f"  Frame {frame_count} | FPS: {fps:.1f} | "
-                      f"Motion: {motion_total} | Anomalies: {anomaly_total}")
+                      f"Tracks: {total_tracks} | YOLO calls: {yolo_calls}")
 
             if cfg.show_preview:
                 if cfg.realtime:
-                    # Throttle to real video speed
                     proc_ms = int((time.time() - t_frame) * 1000)
                     wait_ms = max(1, int(1000 / src_fps) - proc_ms)
                 else:
-                    wait_ms = 1  # process as fast as possible
+                    wait_ms = 1
                 key = cv2.waitKey(wait_ms)
                 if key == ord("q") or key == 27:
                     print("\n[Pipeline] Quit requested")
@@ -318,22 +350,24 @@ def run(cfg: Config):
 
     finally:
         camera.release()
-        vid_writer.release()
+        if vid_writer:
+            vid_writer.release()
         logger.close()
         cv2.destroyAllWindows()
 
     elapsed_total = time.time() - t_start
-    print(f"\n{'='*50}")
+    print(f"\n{'='*55}")
     print(f"  Pipeline Complete!")
-    print(f"{'='*50}")
-    print(f"  Total frames:   {frame_count}")
-    print(f"  Motion frames:  {motion_total}")
-    print(f"  Anomaly frames: {anomaly_total}")
-    print(f"  Known anomalies:  {known_total}")
+    print(f"{'='*55}")
+    print(f"  Total frames:      {frame_count}")
+    print(f"  Known anomalies:   {known_total}")
     print(f"  Unknown anomalies: {unknown_total}")
-    print(f"  Avg FPS:        {frame_count / max(elapsed_total, 0.001):.1f}")
-    print(f"  Time:           {elapsed_total:.1f}s")
-    print(f"{'='*50}")
+    print(f"  Total YOLO calls:  {yolo_calls} (vs {frame_count} frames)")
+    print(f"  Avg FPS:           {frame_count / max(elapsed_total, 0.001):.1f}")
+    print(f"  Time:              {elapsed_total:.1f}s")
+    print(f"  ROI:               {cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}% "
+          f"({roi_h}px)")
+    print(f"{'='*55}")
 
 
 def main():
@@ -357,9 +391,19 @@ def main():
                         help="Throttle display to source video FPS")
     parser.add_argument("--proc-width", type=int, default=None)
     parser.add_argument("--proc-height", type=int, default=None)
+    parser.add_argument("--roi-top", type=float, default=None,
+                        help="Skip top N%% of frame (0.0-1.0, default 0.4)")
+    parser.add_argument("--no-tracker", action="store_true",
+                        help="Disable IoU tracker (run YOLO every frame)")
+    parser.add_argument("--tracker-iou", type=float, default=None,
+                        help="Tracker IoU threshold (default 0.25)")
+    parser.add_argument("--no-video", action="store_true",
+                        help="Skip video encoding (saves CPU on RPi)")
+    parser.add_argument("--rpi", action="store_true",
+                        help="RPi 4B preset: 320x240, onnx, ncnn, skip=2, no video")
     args = parser.parse_args()
 
-    cfg = Config()
+    cfg = Config.rpi_preset() if args.rpi else Config()
     if args.sources:
         cfg.sources = [int(s) if s.isdigit() else s for s in args.sources]
     if args.no_preview or args.headless:
@@ -384,6 +428,14 @@ def main():
         cfg.proc_width = args.proc_width
     if args.proc_height is not None:
         cfg.proc_height = args.proc_height
+    if args.roi_top is not None:
+        cfg.roi_top = args.roi_top
+    if args.no_tracker:
+        cfg.tracker_enabled = False
+    if args.tracker_iou is not None:
+        cfg.tracker_iou = args.tracker_iou
+    if args.no_video:
+        cfg.save_video = False
 
     run(cfg)
 

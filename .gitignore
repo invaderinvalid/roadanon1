@@ -14,3 +14,5 @@ project.md
 .DS_Store
 models/model.pth
 output_onnx
+output_tracked
+output_boxed
