@@ -59,9 +59,14 @@ class YOLOClassifierNCNN:
         if self.net is None:
             return []
 
+        # Ensure contiguous memory — numpy slices (e.g. ROI crops) can be
+        # non-contiguous, which causes NCNN from_pixels to segfault.
+        frame = np.ascontiguousarray(frame)
         img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
         letterboxed, scale, pad_x, pad_y = self._letterbox(img_rgb, self.input_size)
 
+        # Ensure letterboxed is also contiguous (should be, but be safe)
+        letterboxed = np.ascontiguousarray(letterboxed)
         mat_in = ncnn.Mat.from_pixels(letterboxed, ncnn.Mat.PixelType.PIXEL_RGB,
                                        self.input_size, self.input_size)
         mat_in.substract_mean_normalize([0.0, 0.0, 0.0], [1/255.0, 1/255.0, 1/255.0])
