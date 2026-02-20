@@ -82,9 +82,9 @@ class Config:
         cfg.ae_use_int8 = True           # INT8 quantized (2-4× faster on ARM)
         cfg.ae_threshold = 0.08          # higher = fewer false positives
         cfg.classifier_backend = "ncnn"  # or "tflite"
-        cfg.yolo_conf = 0.25             # reject low-confidence garbage
+        cfg.yolo_conf = 0.35             # reject low-confidence garbage
         cfg.yolo_input_size = 320        # smaller YOLO input
-        cfg.skip_frames = 3              # process every 3rd frame
+        cfg.skip_frames = 4              # process every 4th frame
         cfg.max_crops = 3                # cap YOLO calls per frame
         cfg.crop_min_size = 48           # skip tiny crops
         cfg.roi_top = 0.35               # skip top 35%

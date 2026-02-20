@@ -21,7 +21,7 @@ from collections import defaultdict
 from config import Config
 from preprocessing import MultiCamera
 from motion_detect import MotionDetector
-from tracker import SimpleTracker
+from tracker import SimpleTracker, _iou
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -278,29 +278,43 @@ def run(cfg: Config):
                     if motion_pct < motion_min_pct or motion_pct > motion_max_pct:
                         motion_skipped += 1
                     else:
-                        # ── Stage 3: Run YOLO directly on ROI ──
-                        _t = time.time() if do_profile else 0
-                        dets = yolo.infer(roi)
-                        yolo_calls += 1
-                        if do_profile:
-                            stage_times['yolo'] += time.time() - _t
-                            stage_counts['yolo'] += 1
+                        # ── Check if motion is already covered by active tracks ──
+                        tracker = trackers[idx]
+                        tracked_bboxes = tracker.active_bboxes
+                        has_untracked = False
+                        for (mx, my, mw, mh), area in motion_regions:
+                            covered = False
+                            for tb in tracked_bboxes:
+                                if _iou((mx, my, mw, mh), tb) > 0.3:
+                                    covered = True
+                                    break
+                            if not covered:
+                                has_untracked = True
+                                break
 
-                        for det in dets:
-                            bx, by, bw, bh = det["bbox"]
-                            # Crop the detected region from ROI for the track image
-                            x1 = max(0, bx)
-                            y1 = max(0, by)
-                            x2 = min(roi.shape[1], bx + bw)
-                            y2 = min(roi.shape[0], by + bh)
-                            crop_img = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
-                            det_candidates.append({
-                                "bbox": (bx, by, bw, bh),
-                                "score": det["confidence"],
-                                "image": crop_img,
-                                "label": det["class_name"],
-                                "confidence": det["confidence"],
-                            })
+                        # ── Stage 3: Run YOLO on ROI only if new motion ──
+                        if has_untracked:
+                            _t = time.time() if do_profile else 0
+                            dets = yolo.infer(roi)
+                            yolo_calls += 1
+                            if do_profile:
+                                stage_times['yolo'] += time.time() - _t
+                                stage_counts['yolo'] += 1
+
+                            for det in dets:
+                                bx, by, bw, bh = det["bbox"]
+                                x1 = max(0, bx)
+                                y1 = max(0, by)
+                                x2 = min(roi.shape[1], bx + bw)
+                                y2 = min(roi.shape[0], by + bh)
+                                crop_img = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
+                                det_candidates.append({
+                                    "bbox": (bx, by, bw, bh),
+                                    "score": det["confidence"],
+                                    "image": crop_img,
+                                    "label": det["class_name"],
+                                    "confidence": det["confidence"],
+                                })
 
                 # ── Stage 4: Tracker update ──
                 _t = time.time() if do_profile else 0
