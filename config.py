@@ -53,6 +53,8 @@ class Config:
         cfg = Config()
         cfg.proc_width = 320
         cfg.proc_height = 240
+        cfg.motion_history = 100       # 500 is way too slow on ARM
+        cfg.min_contour_area = 300.0   # smaller resolution → smaller contours
         cfg.yolo_conf = 0.35
         cfg.yolo_input_size = 640
         cfg.skip_frames = 4
