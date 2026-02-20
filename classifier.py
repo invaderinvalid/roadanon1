@@ -47,9 +47,13 @@ class YOLOClassifier:
 
     def _preprocess(self, crop: np.ndarray) -> np.ndarray:
         """Resize and normalize crop for TFLite input."""
-        img = cv2.resize(crop, (self.input_size, self.input_size))
-        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
+        if self.interpreter is None:
+            return None
+        # Use actual model input shape instead of assuming cfg value
         inp = self.input_details[0]
+        _, h_in, w_in, _ = inp["shape"]
+        img = cv2.resize(crop, (w_in, h_in))
+        img = cv2.cvtColor(img, cv2.COLOR_BGR2RGB)
         if inp["dtype"] == np.uint8:
             return np.expand_dims(img, axis=0).astype(np.uint8)
         return np.expand_dims(img.astype(np.float32) / 255.0, axis=0)
@@ -92,69 +96,76 @@ class YOLOClassifier:
         if self.interpreter is None:
             return []
 
-        input_data = self._preprocess(frame)
-        self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
-        self.interpreter.invoke()
+        try:
+            frame = np.ascontiguousarray(frame)
+            input_data = self._preprocess(frame)
+            self.interpreter.set_tensor(self.input_details[0]["index"], input_data)
+            self.interpreter.invoke()
 
-        output = self.interpreter.get_tensor(self.output_details[0]["index"])
+            output = self.interpreter.get_tensor(self.output_details[0]["index"])
 
-        # Handle YOLOv26 output: [1, 4+nc, num_anchors] or [1, num_anchors, 4+nc]
-        out = output.squeeze()
-        if out.ndim != 2:
-            # Fallback: treat as classification on whole frame
-            scores = out.flatten()
-            if len(scores) >= len(CLASSES):
-                idx = int(np.argmax(scores[:len(CLASSES)]))
-                conf = float(scores[idx])
-                if conf >= self.conf_threshold:
-                    h, w = frame.shape[:2]
-                    return [{"bbox": (0, 0, w, h), "class_id": idx,
-                             "class_name": CLASSES[idx], "confidence": round(conf, 3)}]
+            # Get actual model input size for coordinate mapping
+            _, h_in, w_in, _ = self.input_details[0]["shape"]
+
+            # Handle YOLOv26 output: [1, 4+nc, num_anchors] or [1, num_anchors, 4+nc]
+            out = output.squeeze()
+            if out.ndim != 2:
+                # Fallback: treat as classification on whole frame
+                scores = out.flatten()
+                if len(scores) >= len(CLASSES):
+                    idx = int(np.argmax(scores[:len(CLASSES)]))
+                    conf = float(scores[idx])
+                    if conf >= self.conf_threshold:
+                        h, w = frame.shape[:2]
+                        return [{"bbox": (0, 0, w, h), "class_id": idx,
+                                 "class_name": CLASSES[idx], "confidence": round(conf, 3)}]
+                return []
+
+            # Determine orientation: [4+nc, anchors] or [anchors, 4+nc]
+            if out.shape[0] == 4 + len(CLASSES):
+                num_anchors = out.shape[1]
+            else:
+                out = out.T
+                num_anchors = out.shape[1]
+
+            h, w = frame.shape[:2]
+            scale_x = w / w_in
+            scale_y = h / h_in
+            boxes, scores, class_ids = [], [], []
+
+            for i in range(num_anchors):
+                cls_scores = out[4:, i]
+                class_id = int(np.argmax(cls_scores))
+                conf = float(cls_scores[class_id])
+                if conf < self.conf_threshold:
+                    continue
+                cx, cy, bw, bh = out[0, i], out[1, i], out[2, i], out[3, i]
+                x1 = int((cx - bw / 2) * scale_x)
+                y1 = int((cy - bh / 2) * scale_y)
+                bw_out = int(bw * scale_x)
+                bh_out = int(bh * scale_y)
+                boxes.append([x1, y1, bw_out, bh_out])
+                scores.append(conf)
+                class_ids.append(class_id)
+
+            if not boxes:
+                return []
+
+            indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, 0.45)
+            detections = []
+            for idx in indices:
+                i = int(idx)
+                x, y, bw, bh = boxes[i]
+                cid = class_ids[i]
+                name = CLASSES[cid] if cid < len(CLASSES) else f"cls{cid}"
+                detections.append({
+                    "bbox": (x, y, bw, bh),
+                    "class_id": cid,
+                    "class_name": name,
+                    "confidence": round(scores[i], 3),
+                })
+            return detections
+
+        except Exception as e:
+            print(f"[YOLO-TFLite] infer error: {e}")
             return []
-
-        # Determine orientation: [4+nc, anchors] or [anchors, 4+nc]
-        if out.shape[0] == 4 + len(CLASSES):
-            # [4+nc, anchors] format
-            num_anchors = out.shape[1]
-        else:
-            # [anchors, 4+nc] format — transpose
-            out = out.T
-            num_anchors = out.shape[1]
-
-        h, w = frame.shape[:2]
-        scale_x = w / self.input_size
-        scale_y = h / self.input_size
-        boxes, scores, class_ids = [], [], []
-
-        for i in range(num_anchors):
-            cls_scores = out[4:, i]
-            class_id = int(np.argmax(cls_scores))
-            conf = float(cls_scores[class_id])
-            if conf < self.conf_threshold:
-                continue
-            cx, cy, bw, bh = out[0, i], out[1, i], out[2, i], out[3, i]
-            x1 = int((cx - bw / 2) * scale_x)
-            y1 = int((cy - bh / 2) * scale_y)
-            bw_out = int(bw * scale_x)
-            bh_out = int(bh * scale_y)
-            boxes.append([x1, y1, bw_out, bh_out])
-            scores.append(conf)
-            class_ids.append(class_id)
-
-        if not boxes:
-            return []
-
-        indices = cv2.dnn.NMSBoxes(boxes, scores, self.conf_threshold, 0.45)
-        detections = []
-        for idx in indices:
-            i = int(idx)
-            x, y, bw, bh = boxes[i]
-            cid = class_ids[i]
-            name = CLASSES[cid] if cid < len(CLASSES) else f"cls{cid}"
-            detections.append({
-                "bbox": (x, y, bw, bh),
-                "class_id": cid,
-                "class_name": name,
-                "confidence": round(scores[i], 3),
-            })
-        return detections

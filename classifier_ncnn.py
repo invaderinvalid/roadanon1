@@ -1,4 +1,4 @@
-"""NCNN-based YOLOv26n classifier for road anomaly detection."""
+"""NCNN YOLOv26n classifier for road anomaly detection."""
 
 import numpy as np
 import cv2
@@ -12,7 +12,7 @@ except ImportError:
 CLASSES = ["road_damage", "speed_bump", "unsurfaced_road"]
 
 
-class YOLOClassifierNCNN:
+class YOLOClassifier:
     """
     NCNN YOLOv26n inference.
     Input:  in0  — [3, 640, 640]
@@ -27,20 +27,21 @@ class YOLOClassifierNCNN:
         self.net = None
 
         if ncnn is None:
-            print("[YOLO-NCNN] WARNING: ncnn not installed")
+            print("[YOLO] WARNING: ncnn not installed — pip install ncnn")
             return
         try:
             self.net = ncnn.Net()
             self.net.opt.use_vulkan_compute = False
-            self.net.opt.num_threads = 1  # single thread — avoids ARM NEON segfaults
+            self.net.opt.num_threads = 1
             self.net.load_param(cfg.yolo_ncnn_param)
             self.net.load_model(cfg.yolo_ncnn_bin)
-            print(f"[YOLO-NCNN] Loaded ({self.num_classes} classes)")
+            print(f"[YOLO] Loaded NCNN model ({self.num_classes} classes)")
         except Exception as e:
             self.net = None
-            print(f"[YOLO-NCNN] WARNING: {e}")
+            print(f"[YOLO] WARNING: {e}")
 
     def _letterbox(self, img, target_size):
+        """Resize with padding to preserve aspect ratio."""
         h, w = img.shape[:2]
         scale = min(target_size / w, target_size / h)
         nw, nh = int(w * scale), int(h * scale)
@@ -48,28 +49,37 @@ class YOLOClassifierNCNN:
         canvas = np.full((target_size, target_size, 3), 114, dtype=np.uint8)
         pad_x = (target_size - nw) // 2
         pad_y = (target_size - nh) // 2
-        canvas[pad_y:pad_y+nh, pad_x:pad_x+nw] = resized
+        canvas[pad_y:pad_y + nh, pad_x:pad_x + nw] = resized
         return canvas, scale, pad_x, pad_y
 
     def infer(self, frame):
         """
-        Returns list of dicts: {bbox, class_id, class_name, confidence}
-        bbox is (x, y, w, h) in original frame coords.
+        Run YOLO on a frame.
+
+        Args:
+            frame: BGR numpy array (any size)
+
+        Returns:
+            List of dicts: {bbox, class_id, class_name, confidence}
+            bbox is (x, y, w, h) in original frame coords.
         """
         if self.net is None:
             return []
 
         try:
-            # Ensure contiguous uint8 memory
             frame = np.ascontiguousarray(frame)
             img_rgb = cv2.cvtColor(frame, cv2.COLOR_BGR2RGB)
             letterboxed, scale, pad_x, pad_y = self._letterbox(img_rgb, self.input_size)
             letterboxed = np.ascontiguousarray(letterboxed)
 
-            mat_in = ncnn.Mat.from_pixels(letterboxed.tobytes(),
-                                          ncnn.Mat.PixelType.PIXEL_RGB,
-                                          self.input_size, self.input_size)
-            mat_in.substract_mean_normalize([0.0, 0.0, 0.0], [1/255.0, 1/255.0, 1/255.0])
+            mat_in = ncnn.Mat.from_pixels(
+                letterboxed.tobytes(),
+                ncnn.Mat.PixelType.PIXEL_RGB,
+                self.input_size, self.input_size,
+            )
+            mat_in.substract_mean_normalize(
+                [0.0, 0.0, 0.0], [1 / 255.0, 1 / 255.0, 1 / 255.0],
+            )
 
             ex = self.net.create_extractor()
             ex.input("in0", mat_in)
@@ -117,5 +127,5 @@ class YOLOClassifierNCNN:
             return detections
 
         except Exception as e:
-            print(f"[YOLO-NCNN] infer error: {e}")
+            print(f"[YOLO] infer error: {e}")
             return []
