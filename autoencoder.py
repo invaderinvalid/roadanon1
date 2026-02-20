@@ -7,19 +7,17 @@ Matches the U-Net checkpoint structure from model.pth:
 Backends:
   - "torch" : PyTorch (Mac/dev — requires ARMv8.2+ on aarch64)
   - "onnx"  : ONNX Runtime (RPi 4B safe — supports Cortex-A72 / ARMv8.0)
+
+IMPORTANT: torch is NEVER imported at module level.  On Cortex-A72 (RPi 4B),
+`import torch` triggers SIGILL (illegal instruction) because pip's aarch64
+wheels use ARMv8.2+ ops (SDOT/UDOT).  All torch usage is deferred to
+_AnomalyDetectorTorch.__init__() so that choosing ae_backend="onnx" avoids
+touching torch entirely.
 """
 
 import numpy as np
 import cv2
 from config import Config
-
-# PyTorch is optional — only imported when backend == "torch"
-try:
-    import torch
-    import torch.nn as nn
-    _HAS_TORCH = True
-except ImportError:
-    _HAS_TORCH = False
 
 try:
     import onnxruntime as ort
@@ -29,28 +27,28 @@ except ImportError:
 
 
 # ═══════════════════════════════════════════════════════════════
-# PyTorch model definition (only used when backend == "torch")
+# PyTorch model builder (lazy — called only from Torch backend)
 # ═══════════════════════════════════════════════════════════════
 
-if _HAS_TORCH:
-    class ResBlock(nn.Module):
-        """Two-conv residual block with BatchNorm."""
+def _build_torch_model():
+    """Build the UNetAutoencoder. Imports torch HERE, not at module level."""
+    import torch
+    import torch.nn as nn
 
+    class ResBlock(nn.Module):
         def __init__(self, ch):
             super().__init__()
             self.block = nn.Sequential(
                 nn.Conv2d(ch, ch, 3, padding=1, bias=False), nn.BatchNorm2d(ch), nn.ReLU(True),
                 nn.Conv2d(ch, ch, 3, padding=1, bias=False), nn.BatchNorm2d(ch),
             )
-
         def forward(self, x):
             return torch.relu(x + self.block(x))
 
     def _enc_block(c_in, c_out):
         return nn.Sequential(
             nn.Conv2d(c_in, c_out, 3, stride=2, padding=1, bias=False),
-            nn.BatchNorm2d(c_out), nn.ReLU(True),
-            ResBlock(c_out),
+            nn.BatchNorm2d(c_out), nn.ReLU(True), ResBlock(c_out),
         )
 
     def _dec_block(c_in, c_out):
@@ -62,37 +60,26 @@ if _HAS_TORCH:
     def _fuse_block(c_skip, c_out):
         return nn.Sequential(
             nn.Conv2d(c_skip + c_out, c_out, 1, bias=False),
-            nn.BatchNorm2d(c_out), nn.ReLU(True),
-            ResBlock(c_out),
+            nn.BatchNorm2d(c_out), nn.ReLU(True), ResBlock(c_out),
         )
 
     class UNetAutoencoder(nn.Module):
-        """U-Net style autoencoder matching model.pth checkpoint."""
-
         def __init__(self, img_size=128, latent_dim=512, in_channels=3):
             super().__init__()
-            self.spatial = img_size // 16  # 8 for 128
-
-            # Encoder
-            self.enc1 = _enc_block(in_channels, 32)   # → 32×64×64
-            self.enc2 = _enc_block(32, 64)             # → 64×32×32
-            self.enc3 = _enc_block(64, 128)            # → 128×16×16
-            self.enc4 = _enc_block(128, 256)           # → 256×8×8
-
+            self.spatial = img_size // 16
+            self.enc1 = _enc_block(in_channels, 32)
+            self.enc2 = _enc_block(32, 64)
+            self.enc3 = _enc_block(64, 128)
+            self.enc4 = _enc_block(128, 256)
             flat = 256 * self.spatial * self.spatial
             self.bottleneck_encode = nn.Sequential(nn.Flatten(), nn.Linear(flat, latent_dim))
             self.bottleneck_decode = nn.Sequential(nn.Linear(latent_dim, flat), nn.ReLU(True))
-
-            # Decoder (with skip connections)
-            self.dec4 = _dec_block(256, 128)     # → 128×16×16
-            self.dec4_fuse = _fuse_block(128, 128)  # cat(enc3, dec4) → 128
-
-            self.dec3 = _dec_block(128, 64)      # → 64×32×32
+            self.dec4 = _dec_block(256, 128)
+            self.dec4_fuse = _fuse_block(128, 128)
+            self.dec3 = _dec_block(128, 64)
             self.dec3_fuse = _fuse_block(64, 64)
-
-            self.dec2 = _dec_block(64, 32)       # → 32×64×64
+            self.dec2 = _dec_block(64, 32)
             self.dec2_fuse = _fuse_block(32, 32)
-
             self.dec1 = nn.Sequential(
                 nn.ConvTranspose2d(32, 16, 4, stride=2, padding=1, bias=False),
                 nn.BatchNorm2d(16), nn.ReLU(True),
@@ -104,10 +91,8 @@ if _HAS_TORCH:
             e2 = self.enc2(e1)
             e3 = self.enc3(e2)
             e4 = self.enc4(e3)
-
             z = self.bottleneck_encode(e4)
             d = self.bottleneck_decode(z).view_as(e4)
-
             d = self.dec4(d)
             d = self.dec4_fuse(torch.cat([e3, d], dim=1))
             d = self.dec3(d)
@@ -116,6 +101,8 @@ if _HAS_TORCH:
             d = self.dec2_fuse(torch.cat([e1, d], dim=1))
             d = self.dec1(d)
             return torch.sigmoid(d)
+
+    return UNetAutoencoder
 
 
 # ═══════════════════════════════════════════════════════════════
@@ -158,23 +145,27 @@ class _AnomalyDetectorONNX:
 # ═══════════════════════════════════════════════════════════════
 
 class _AnomalyDetectorTorch:
-    """PyTorch inference — uses MPS on Apple Silicon, CPU otherwise."""
+    """PyTorch inference — uses MPS on Apple Silicon, CPU otherwise.
+    
+    All torch imports happen HERE, not at module level, so that
+    ae_backend='onnx' never touches torch (avoids SIGILL on Cortex-A72).
+    """
 
     AE_SIZE = 128
 
     def __init__(self, cfg: Config):
-        if not _HAS_TORCH:
-            raise ImportError(
-                "torch not installed. Install with: pip install torch\n"
-                "On RPi 4B (Cortex-A72), use ae_backend='onnx' instead."
-            )
-        if torch.backends.mps.is_available():
-            self.device = torch.device("mps")
+        import torch as _torch
+        self._torch = _torch
+
+        if _torch.backends.mps.is_available():
+            self.device = _torch.device("mps")
         else:
-            self.device = torch.device("cpu")
+            self.device = _torch.device("cpu")
+
+        UNetAutoencoder = _build_torch_model()
         self.model = UNetAutoencoder(img_size=128, latent_dim=512, in_channels=3).to(self.device)
         try:
-            ckpt = torch.load(cfg.autoencoder_path, map_location=self.device, weights_only=False)
+            ckpt = _torch.load(cfg.autoencoder_path, map_location=self.device, weights_only=False)
             state = ckpt.get("model_state_dict", ckpt)
             self.model.load_state_dict(state)
             epoch = ckpt.get("epoch", "?")
@@ -184,13 +175,14 @@ class _AnomalyDetectorTorch:
             print(f"[AE] WARNING: {cfg.autoencoder_path} not found, using random weights")
         self.model.eval()
 
-    @torch.inference_mode()
     def infer(self, frame: np.ndarray) -> tuple:
+        _torch = self._torch
         h, w = frame.shape[:2]
         resized = cv2.resize(frame, (self.AE_SIZE, self.AE_SIZE))
-        tensor = torch.from_numpy(resized).float().permute(2, 0, 1).unsqueeze(0).to(self.device) / 255.0
-        output = self.model(tensor)
-        error = torch.abs(tensor - output).mean(dim=1).squeeze(0).cpu().numpy()
+        tensor = _torch.from_numpy(resized).float().permute(2, 0, 1).unsqueeze(0).to(self.device) / 255.0
+        with _torch.inference_mode():
+            output = self.model(tensor)
+        error = _torch.abs(tensor - output).mean(dim=1).squeeze(0).cpu().numpy()
         mean_error = float(error.mean())
         error_map = cv2.resize(error, (w, h))
         return error_map, mean_error
