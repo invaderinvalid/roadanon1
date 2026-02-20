@@ -83,7 +83,7 @@ class Config:
         cfg.ae_threshold = 0.08          # higher = fewer false positives
         cfg.classifier_backend = "ncnn"  # or "tflite"
         cfg.yolo_conf = 0.35             # reject low-confidence garbage
-        cfg.yolo_input_size = 320        # smaller YOLO input
+        cfg.yolo_input_size = 640        # must match NCNN model export size
         cfg.skip_frames = 4              # process every 4th frame
         cfg.max_crops = 3                # cap YOLO calls per frame
         cfg.crop_min_size = 48           # skip tiny crops
