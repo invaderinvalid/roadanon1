@@ -46,6 +46,7 @@ class DetectionEngine:
         self._running = False
         self._thread = None
         self._frame_queue = deque(maxlen=2)
+        self._ae_visual_queue = deque(maxlen=1)  # (input, recon, heatmap) RGB
         self._stats = {}
         self._alerts = deque(maxlen=50)
         self._lock = threading.Lock()
@@ -57,6 +58,10 @@ class DetectionEngine:
     def get_frame(self):
         with self._lock:
             return self._frame_queue.popleft() if self._frame_queue else None
+
+    def get_ae_visual(self):
+        with self._lock:
+            return self._ae_visual_queue.popleft() if self._ae_visual_queue else None
 
     def get_stats(self):
         with self._lock:
@@ -207,6 +212,18 @@ class DetectionEngine:
                         eff_thresh = cfg.ae_threshold * mw
                         ae_says_anomaly, ae_err, _ = ae.is_anomaly_smoothed(roi, eff_thresh)
                         last_ae_error = ae_err
+
+                        # Generate AE visualization (reuse the inference)
+                        _, ae_inp, ae_rec, ae_heat = ae.infer_visual(roi)
+                        if ae_inp is not None:
+                            # Convert all to RGB for tkinter
+                            ae_inp_rgb = cv2.cvtColor(ae_inp, cv2.COLOR_BGR2RGB)
+                            ae_rec_rgb = cv2.cvtColor(ae_rec, cv2.COLOR_BGR2RGB)
+                            ae_heat_rgb = cv2.cvtColor(ae_heat, cv2.COLOR_BGR2RGB)
+                            with self._lock:
+                                self._ae_visual_queue.append(
+                                    (ae_inp_rgb, ae_rec_rgb, ae_heat_rgb, ae_err, ae_says_anomaly)
+                                )
 
                 # YOLO fetch
                 yolo_result = yolo.fetch()
@@ -370,6 +387,35 @@ class AnomalyDetectorGUI:
                                    fg="#444", font=("Helvetica", 15))
         self.video_lbl.pack(fill="both", expand=True)
 
+        # AE Visualization strip (below video)
+        ae_strip = tk.Frame(left, bg="#0a0a18", height=110)
+        ae_strip.pack(fill="x", side="bottom")
+        ae_strip.pack_propagate(False)
+
+        ae_hdr = tk.Frame(ae_strip, bg="#0a0a18")
+        ae_hdr.pack(fill="x", padx=4, pady=(4, 0))
+        tk.Label(ae_hdr, text="Autoencoder Processing", bg="#0a0a18", fg=FG_ACCENT,
+                 font=("Helvetica", 9, "bold")).pack(side="left")
+        self.ae_status_lbl = tk.Label(ae_hdr, text="", bg="#0a0a18", fg=FG_DIM,
+                                       font=("Consolas", 9))
+        self.ae_status_lbl.pack(side="right")
+
+        ae_imgs = tk.Frame(ae_strip, bg="#0a0a18")
+        ae_imgs.pack(fill="both", expand=True, padx=4, pady=2)
+
+        self._ae_photos = [None, None, None]
+        self._ae_labels_img = []
+        self._ae_labels_txt = []
+        for i, title in enumerate(["Input (ROI)", "Reconstruction", "Error Heatmap"]):
+            col = tk.Frame(ae_imgs, bg="#0a0a18")
+            col.pack(side="left", fill="both", expand=True, padx=2)
+            tk.Label(col, text=title, bg="#0a0a18", fg=FG_DIM,
+                     font=("Helvetica", 8)).pack()
+            img_lbl = tk.Label(col, bg="#111", width=10, height=5)
+            img_lbl.pack(fill="both", expand=True)
+            self._ae_labels_img.append(img_lbl)
+            self._ae_labels_txt.append(title)
+
         # RIGHT — sidebar
         right = tk.Frame(body, bg=BG_DARK, width=280)
         right.pack(side="right", fill="y")
@@ -453,7 +499,7 @@ class AnomalyDetectorGUI:
 
         self.alert_text = tk.Text(alert_box, bg="#080818", fg=RED,
                                    font=("Consolas", 9), wrap="word", bd=0,
-                                   state="disabled", height=6)
+                                   state="disabled", height=4)
         self.alert_text.pack(fill="both", expand=True)
         self.alert_text.tag_configure("road_damage", foreground="#ff3c3c")
         self.alert_text.tag_configure("speed_bump", foreground="#ffa500")
@@ -519,6 +565,25 @@ class AnomalyDetectorGUI:
             img = Image.fromarray(frame)
             self._photo = ImageTk.PhotoImage(img)
             self.video_lbl.config(image=self._photo, text="")
+
+        # AE visuals
+        ae_vis = self.engine.get_ae_visual()
+        if ae_vis is not None:
+            ae_inp, ae_rec, ae_heat, ae_err, ae_anom = ae_vis
+            status_color = RED if ae_anom else GREEN
+            self.ae_status_lbl.config(
+                text=f"error: {ae_err:.4f} {'⚠ ANOMALY' if ae_anom else '✓ normal'}",
+                fg=status_color
+            )
+            for i, img_arr in enumerate([ae_inp, ae_rec, ae_heat]):
+                # Scale to fit the label
+                target_h = 70
+                ih, iw = img_arr.shape[:2]
+                scale = target_h / ih
+                sized = cv2.resize(img_arr, (int(iw * scale), target_h))
+                pil_img = Image.fromarray(sized)
+                self._ae_photos[i] = ImageTk.PhotoImage(pil_img)
+                self._ae_labels_img[i].config(image=self._ae_photos[i])
 
         # Alerts
         for tag, text, color in self.engine.get_new_alerts():

@@ -89,6 +89,44 @@ class AutoencoderDetector:
 
         return error_map, mean_error
 
+    def infer_visual(self, frame: np.ndarray):
+        """Run AE and return visualization images.
+
+        Returns:
+            (mean_error, input_img, recon_img, heatmap_img)
+            All images are BGR uint8 at input_size × input_size.
+        """
+        if self.session is None:
+            return 0.0, None, None, None
+
+        resized = cv2.resize(frame, (self.input_size, self.input_size))
+        blob = resized.astype(np.float32).transpose(2, 0, 1)[np.newaxis] / 255.0
+
+        if self._input_fp16:
+            blob = blob.astype(np.float16)
+
+        output = self.session.run(None, {self.input_name: blob})[0]
+
+        blob_f32 = blob.astype(np.float32) if self._input_fp16 else blob
+        out_f32 = output.astype(np.float32) if output.dtype != np.float32 else output
+
+        # Error map
+        error = np.abs(blob_f32 - out_f32).mean(axis=1).squeeze(0)
+        mean_error = float(error.mean())
+
+        # Reconstruction image (CHW → HWC, scale to 0-255)
+        recon = np.clip(out_f32.squeeze(0).transpose(1, 2, 0) * 255, 0, 255).astype(np.uint8)
+        recon_bgr = cv2.cvtColor(recon, cv2.COLOR_RGB2BGR) if recon.shape[2] == 3 else recon
+
+        # Heatmap (normalize error to 0-255, apply colormap)
+        err_norm = np.clip(error / max(mean_error * 3, 0.01) * 255, 0, 255).astype(np.uint8)
+        heatmap = cv2.applyColorMap(err_norm, cv2.COLORMAP_JET)
+
+        # Input (already BGR from OpenCV resize)
+        input_bgr = resized
+
+        return mean_error, input_bgr, recon_bgr, heatmap
+
     def is_anomaly_smoothed(self, frame: np.ndarray, effective_threshold: float):
         """Check for anomaly with temporal smoothing.
 
