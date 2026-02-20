@@ -1,5 +1,16 @@
+# Core
 opencv-python-headless>=4.8
 numpy>=1.24
-torch>=2.0
-torchvision>=0.15
-# tflite-runtime>=2.14  # uncomment on Raspberry Pi (no Mac wheels)
+
+# Inference
+onnxruntime>=1.16            # AE autoencoder (FP16 ONNX)
+ncnn                       # YOLO — install from source on RPi (pip has no wheel)
+
+# GUI
+Pillow>=10.0                 # Tkinter image display
+
+# Benchmarking
+psutil>=5.9                  # CPU, RAM, temp monitoring
+
+# RPi-specific (uncomment on Raspberry Pi)
+picamera2                  # Pi Camera Module support
