@@ -1,15 +1,24 @@
 """YOLOv26n TFLite classifier for anomaly classification."""
 
+import sys
 import numpy as np
 import cv2
 from config import Config
 
+# Python 3.12 removed the 'imp' module, but old tflite_runtime still imports it.
+# Provide a shim so tflite_runtime can load.
+if sys.version_info >= (3, 12) and 'imp' not in sys.modules:
+    import importlib
+    sys.modules['imp'] = importlib
+
 try:
     from tflite_runtime.interpreter import Interpreter
 except ImportError:
-    # Fallback for dev machines
-    import tensorflow.lite as tflite
-    Interpreter = tflite.Interpreter
+    try:
+        import tensorflow.lite as tflite
+        Interpreter = tflite.Interpreter
+    except ImportError:
+        Interpreter = None
 
 
 CLASSES = ["road_damage", "speed_bump", "unsurfaced_road"]
@@ -23,14 +32,18 @@ class YOLOClassifier:
         self.conf_threshold = cfg.yolo_conf
         self.interpreter = None
 
+        if Interpreter is None:
+            print("[YOLO-TFLite] WARNING: tflite_runtime not installed")
+            return
+
         try:
-            self.interpreter = Interpreter(model_path=cfg.yolo_model_path)
+            self.interpreter = Interpreter(model_path=cfg.yolo_tflite_path)
             self.interpreter.allocate_tensors()
             self.input_details = self.interpreter.get_input_details()
             self.output_details = self.interpreter.get_output_details()
-            print(f"[YOLO] Loaded {cfg.yolo_model_path}")
+            print(f"[YOLO-TFLite] Loaded {cfg.yolo_tflite_path}")
         except (FileNotFoundError, ValueError) as e:
-            print(f"[YOLO] WARNING: Could not load model: {e}")
+            print(f"[YOLO-TFLite] WARNING: Could not load model: {e}")
 
     def _preprocess(self, crop: np.ndarray) -> np.ndarray:
         """Resize and normalize crop for TFLite input."""
