@@ -5,20 +5,20 @@ import numpy as np
 import cv2
 from config import Config
 
-# Python 3.12 removed the 'imp' module, but old tflite_runtime still imports it.
-# Provide a shim so tflite_runtime can load.
-if sys.version_info >= (3, 12) and 'imp' not in sys.modules:
-    import importlib
-    sys.modules['imp'] = importlib
-
 try:
+    # Legacy package (Python < 3.12)
     from tflite_runtime.interpreter import Interpreter
 except ImportError:
     try:
-        import tensorflow.lite as tflite
-        Interpreter = tflite.Interpreter
+        # Modern package (Python 3.12+)
+        from ai_edge_litert.interpreter import Interpreter
     except ImportError:
-        Interpreter = None
+        try:
+            # Full TensorFlow
+            import tensorflow.lite as tflite
+            Interpreter = tflite.Interpreter
+        except ImportError:
+            Interpreter = None
 
 
 CLASSES = ["road_damage", "speed_bump", "unsurfaced_road"]
