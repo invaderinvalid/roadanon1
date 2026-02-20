@@ -1,7 +1,11 @@
-"""NCNN YOLOv26n classifier for road anomaly detection."""
+"""NCNN YOLOv26n classifier for road anomaly detection.
+
+Supports synchronous and asynchronous (threaded) inference.
+"""
 
 import numpy as np
 import cv2
+from threading import Thread, Lock, Event
 from config import Config
 
 try:
@@ -32,13 +36,21 @@ class YOLOClassifier:
         try:
             self.net = ncnn.Net()
             self.net.opt.use_vulkan_compute = False
-            self.net.opt.num_threads = 1
+            self.net.opt.num_threads = 2   # uses cores 3-4 on RPi
             self.net.load_param(cfg.yolo_ncnn_param)
             self.net.load_model(cfg.yolo_ncnn_bin)
             print(f"[YOLO] Loaded NCNN model ({self.num_classes} classes)")
         except Exception as e:
             self.net = None
             print(f"[YOLO] WARNING: {e}")
+
+        # Async state
+        self._lock = Lock()
+        self._request_frame = None
+        self._result = None
+        self._busy = False
+        self._thread = None
+        self._stop = False
 
     def _letterbox(self, img, target_size):
         """Resize with padding to preserve aspect ratio."""
@@ -52,17 +64,8 @@ class YOLOClassifier:
         canvas[pad_y:pad_y + nh, pad_x:pad_x + nw] = resized
         return canvas, scale, pad_x, pad_y
 
-    def infer(self, frame):
-        """
-        Run YOLO on a frame.
-
-        Args:
-            frame: BGR numpy array (any size)
-
-        Returns:
-            List of dicts: {bbox, class_id, class_name, confidence}
-            bbox is (x, y, w, h) in original frame coords.
-        """
+    def _run_inference(self, frame):
+        """Internal: run NCNN inference on a frame."""
         if self.net is None:
             return []
 
@@ -129,3 +132,66 @@ class YOLOClassifier:
         except Exception as e:
             print(f"[YOLO] infer error: {e}")
             return []
+
+    def infer(self, frame):
+        """Synchronous inference."""
+        return self._run_inference(frame)
+
+    # ── Async API ──────────────────────────────────────────────
+
+    def _worker(self):
+        """Background thread: pick up frames, run inference, store results."""
+        while not self._stop:
+            frame = None
+            with self._lock:
+                if self._request_frame is not None:
+                    frame = self._request_frame
+                    self._request_frame = None
+                    self._busy = True
+
+            if frame is not None:
+                result = self._run_inference(frame)
+                with self._lock:
+                    self._result = result
+                    self._busy = False
+            else:
+                # No work — tiny sleep to avoid busy-wait
+                import time
+                time.sleep(0.001)
+
+    def start_async(self):
+        """Start the background YOLO thread."""
+        self._stop = False
+        self._thread = Thread(target=self._worker, daemon=True)
+        self._thread.start()
+        print("[YOLO] Async thread started")
+
+    def stop_async(self):
+        """Stop the background thread."""
+        self._stop = True
+        if self._thread:
+            self._thread.join(timeout=2)
+
+    def submit(self, frame):
+        """Submit a frame for async inference (non-blocking).
+        Returns True if accepted, False if still busy with previous frame."""
+        with self._lock:
+            if self._busy:
+                return False  # drop frame — still processing previous
+            self._request_frame = frame.copy()
+            return True
+
+    def fetch(self):
+        """Fetch completed results (non-blocking).
+        Returns list of detections, or None if no result ready."""
+        with self._lock:
+            if self._result is not None:
+                result = self._result
+                self._result = None
+                return result
+            return None
+
+    @property
+    def is_busy(self):
+        with self._lock:
+            return self._busy

@@ -1,13 +1,10 @@
-"""Road Anomaly Detection Pipeline.
+"""Road Anomaly Detection Pipeline — Real-time on RPi 4B.
 
-YOLO-only flow (no autoencoder) optimized for RPi real-time:
-  1. Read frame → crop to ROI (skip sky/horizon)
-  2. Motion detection on ROI
-  3. Motion gate (skip if noise/shake)
-  4. Tracker check (skip YOLO if motion already tracked)
-  5. YOLO on ROI (NCNN)
-  6. Tracker update → assign labels
-  7. Log once per track lifetime
+Async YOLO flow:
+  Main thread:  capture → motion → tracker → draw  (runs at camera FPS)
+  YOLO thread:  inference in background (non-blocking)
+
+  Results from YOLO feed into tracker on the NEXT frame.
 """
 
 import cv2
@@ -41,30 +38,25 @@ def draw_results(frame, roi_y, active_tracks, fps, motion_regions=None):
     display = frame.copy()
     h, w = display.shape[:2]
 
-    # ROI boundary line
     if roi_y > 0:
         for x0 in range(0, w, 12):
             cv2.line(display, (x0, roi_y), (min(x0 + 6, w), roi_y), (255, 255, 0), 1)
 
-    # Motion regions
     if motion_regions:
         for (mx, my, mw, mh), _ in motion_regions:
             cv2.rectangle(display, (mx, roi_y + my), (mx + mw, roi_y + my + mh),
                           (0, 180, 0), 1)
 
-    # Tracked anomalies
     for t in active_tracks:
         tx, ty, tw, th = t.bbox
         fy = roi_y + ty
         color = CLASS_COLORS.get(t.label, (255, 255, 0))
         thickness = 2 if t.label else 1
-
         cv2.rectangle(display, (tx, fy), (tx + tw, fy + th), color, thickness)
-        lbl = f"T{t.id} {t.label} {t.confidence:.2f}" if t.label else f"T{t.id} unknown"
+        lbl = f"T{t.id} {t.label} {t.confidence:.2f}" if t.label else f"T{t.id} ?"
         cv2.putText(display, lbl, (tx, max(fy - 5, 12)),
                     cv2.FONT_HERSHEY_SIMPLEX, 0.42, color, 1)
 
-    # Status bar
     cv2.putText(display, f"FPS: {fps:.1f}", (10, 25),
                 cv2.FONT_HERSHEY_SIMPLEX, 0.6, (255, 255, 255), 2)
     cv2.putText(display, f"Tracks: {len(active_tracks)}", (10, 50),
@@ -77,8 +69,6 @@ def draw_results(frame, roi_y, active_tracks, fps, motion_regions=None):
 # ═══════════════════════════════════════════════════════════════
 
 class JSONLLogger:
-    """Writes one JSON line per NEW track (first detection only)."""
-
     def __init__(self, path):
         self._file = open(path, "w")
 
@@ -108,8 +98,6 @@ class JSONLLogger:
 
 
 class VideoWriterWrapper:
-    """Per-camera annotated video output."""
-
     def __init__(self, output_dir, width, height, fps=15.0):
         os.makedirs(output_dir, exist_ok=True)
         self.output_dir = output_dir
@@ -136,24 +124,25 @@ class VideoWriterWrapper:
 
 
 # ═══════════════════════════════════════════════════════════════
-# Pipeline
+# Pipeline — async YOLO for real-time
 # ═══════════════════════════════════════════════════════════════
 
 def run(cfg: Config):
     print("╔══════════════════════════════════════╗")
     print("║   Road Anomaly Detection Pipeline    ║")
-    print("║   NCNN YOLOv26n                      ║")
+    print("║   Real-time · NCNN · Async YOLO      ║")
     print("╚══════════════════════════════════════╝\n")
 
     os.makedirs(cfg.output_dir, exist_ok=True)
     log_path = os.path.join(cfg.output_dir, "detections.jsonl")
 
-    # ── Initialize modules ──
+    # ── Init ──
     camera = MultiCamera(cfg)
     src_fps = camera.src_fps or 30.0
 
     from classifier_ncnn import YOLOClassifier
     yolo = YOLOClassifier(cfg)
+    yolo.start_async()
 
     motion_dets = [MotionDetector(cfg) for _ in cfg.sources]
     trackers = [SimpleTracker(iou_thresh=cfg.tracker_iou,
@@ -163,19 +152,16 @@ def run(cfg: Config):
     vid_writer = VideoWriterWrapper(
         cfg.output_dir, cfg.proc_width, cfg.proc_height) if cfg.save_video else None
 
-    # ── ROI ──
     roi_y_start = int(cfg.proc_height * cfg.roi_top)
     roi_y_end = int(cfg.proc_height * cfg.roi_bottom)
     roi_h = roi_y_end - roi_y_start
     roi_area = roi_h * cfg.proc_width
 
-    # ── Thresholds ──
     motion_min_pct = cfg.motion_min_pct
     motion_max_pct = cfg.motion_max_pct
     do_profile = cfg.profile
     skip_n = cfg.skip_frames
 
-    # ── Counters ──
     stage_times = defaultdict(float)
     stage_counts = defaultdict(int)
     frame_count = 0
@@ -186,7 +172,9 @@ def run(cfg: Config):
     fps = 0.0
     t_start = time.time()
 
-    # ── Print config ──
+    # Pending YOLO results from async — applied on next frame
+    pending_dets = [[] for _ in cfg.sources]
+
     print(f"[Config] {cfg.proc_width}x{cfg.proc_height} | "
           f"ROI: {cfg.roi_top*100:.0f}%-{cfg.roi_bottom*100:.0f}% ({roi_h}px) | "
           f"skip={skip_n}")
@@ -196,9 +184,8 @@ def run(cfg: Config):
           f"Preview={'ON' if cfg.show_preview else 'OFF'} | "
           f"Profile={'ON' if do_profile else 'OFF'}")
     print(f"[Config] Log → {log_path}")
-    print("[Pipeline] Running... Press 'q' to quit.\n")
+    print("[Pipeline] Running (async YOLO)... Press 'q' to quit.\n")
 
-    # Disable automatic GC — manual collection avoids random pauses
     gc.disable()
 
     try:
@@ -210,7 +197,7 @@ def run(cfg: Config):
 
             frame_count += 1
 
-            # Skip frames — update BG model but skip heavy ops
+            # Skip frames — keep BG model fresh
             if skip_n > 0 and (frame_count % skip_n != 0):
                 for idx, frame in enumerate(frames):
                     if frame is not None:
@@ -222,64 +209,54 @@ def run(cfg: Config):
                     continue
 
                 t_frame = time.time()
-
-                # ── Stage 1: ROI ──
                 roi = frame[roi_y_start:roi_y_end]
 
-                # ── Stage 2: Motion ──
+                # ── Motion detection ──
                 _t = time.time() if do_profile else 0
                 mask, motion_regions = motion_dets[idx].detect(roi)
                 if do_profile:
                     stage_times['motion'] += time.time() - _t
                     stage_counts['motion'] += 1
 
+                # ── Pick up async YOLO results from previous frame ──
+                yolo_result = yolo.fetch()
                 det_candidates = []
+                if yolo_result is not None:
+                    for det in yolo_result:
+                        bx, by, bw, bh = det["bbox"]
+                        x1, y1 = max(0, bx), max(0, by)
+                        x2 = min(roi.shape[1], bx + bw)
+                        y2 = min(roi.shape[0], by + bh)
+                        crop = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
+                        det_candidates.append({
+                            "bbox": (bx, by, bw, bh),
+                            "score": det["confidence"],
+                            "image": crop,
+                            "label": det["class_name"],
+                            "confidence": det["confidence"],
+                        })
 
+                # ── Submit new YOLO request (non-blocking) ──
                 if motion_regions:
                     total_motion = sum(a for _, a in motion_regions)
                     motion_pct = (total_motion / roi_area) * 100.0
 
-                    # ── Stage 3: Motion gate ──
                     if motion_pct < motion_min_pct or motion_pct > motion_max_pct:
                         motion_skipped += 1
                     else:
-                        # ── Check if already tracked ──
                         tracker = trackers[idx]
                         has_untracked = False
                         for (mx, my, mw, mh), _ in motion_regions:
-                            covered = any(
-                                _iou((mx, my, mw, mh), tb) > 0.3
-                                for tb in tracker.active_bboxes
-                            )
-                            if not covered:
+                            if not any(_iou((mx, my, mw, mh), tb) > 0.3
+                                       for tb in tracker.active_bboxes):
                                 has_untracked = True
                                 break
 
-                        # ── Stage 4: YOLO (only if new motion) ──
-                        if has_untracked:
-                            _t = time.time() if do_profile else 0
-                            dets = yolo.infer(roi)
-                            yolo_calls += 1
-                            if do_profile:
-                                stage_times['yolo'] += time.time() - _t
-                                stage_counts['yolo'] += 1
+                        if has_untracked and not yolo.is_busy:
+                            if yolo.submit(roi):
+                                yolo_calls += 1
 
-                            for det in dets:
-                                bx, by, bw, bh = det["bbox"]
-                                x1, y1 = max(0, bx), max(0, by)
-                                x2 = min(roi.shape[1], bx + bw)
-                                y2 = min(roi.shape[0], by + bh)
-                                crop = roi[y1:y2, x1:x2].copy() if (x2 > x1 and y2 > y1) else None
-                                det_candidates.append({
-                                    "bbox": (bx, by, bw, bh),
-                                    "score": det["confidence"],
-                                    "image": crop,
-                                    "label": det["class_name"],
-                                    "confidence": det["confidence"],
-                                })
-                            dets = None
-
-                # ── Stage 5: Tracker ──
+                # ── Tracker update ──
                 _t = time.time() if do_profile else 0
                 tracker = trackers[idx]
                 new_tracks, active_tracks, gone_tracks = tracker.update(
@@ -288,7 +265,7 @@ def run(cfg: Config):
                     stage_times['tracker'] += time.time() - _t
                     stage_counts['tracker'] += 1
 
-                # ── Stage 6: Label + Log new tracks ──
+                # ── Label + log new tracks ──
                 for t in new_tracks:
                     for dc in det_candidates:
                         if dc["bbox"] == t.bbox:
@@ -310,7 +287,6 @@ def run(cfg: Config):
                     t.image = None
                     t.yolo_dets = []
 
-                # Free gone tracks
                 for t in gone_tracks:
                     t.image = None
                 det_candidates = None
@@ -331,7 +307,6 @@ def run(cfg: Config):
                         stage_times['draw'] += time.time() - _t
                         stage_counts['draw'] += 1
 
-            # Manual GC
             if frame_count % 100 == 0:
                 gc.collect()
 
@@ -348,13 +323,13 @@ def run(cfg: Config):
 
     finally:
         gc.enable()
+        yolo.stop_async()
         camera.release()
         if vid_writer:
             vid_writer.release()
         logger.close()
         cv2.destroyAllWindows()
 
-    # ── Summary ──
     elapsed_total = time.time() - t_start
     print(f"\n{'='*55}")
     print(f"  Pipeline Complete!")
@@ -379,12 +354,11 @@ def run(cfg: Config):
 
 def main():
     parser = argparse.ArgumentParser(description="Road Anomaly Detection Pipeline")
-    parser.add_argument("--sources", nargs="+", default=None,
-                        help="Video sources (camera indices or file paths)")
+    parser.add_argument("--sources", nargs="+", default=None)
     parser.add_argument("--no-preview", action="store_true")
-    parser.add_argument("--headless", action="store_true", help="Alias for --no-preview")
+    parser.add_argument("--headless", action="store_true")
     parser.add_argument("--yolo-conf", type=float, default=None)
-    parser.add_argument("--output", "-o", default=None, help="Output directory")
+    parser.add_argument("--output", "-o", default=None)
     parser.add_argument("--skip-frames", type=int, default=None)
     parser.add_argument("--realtime", action="store_true")
     parser.add_argument("--proc-width", type=int, default=None)
